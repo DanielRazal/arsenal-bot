@@ -1,0 +1,18 @@
+[Unit]
+Description=Arsenal Bot — Telegram + Discord notifier
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/Arsenal
+EnvironmentFile=/home/ubuntu/Arsenal/.env
+ExecStart=/home/ubuntu/Arsenal/.venv/bin/python -m src.main
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
