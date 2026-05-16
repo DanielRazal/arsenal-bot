@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from .. import db
+from ..sources.dedup import find_similar
 from ..sources.feeds import (
     FEEDS,
     is_clickbait,
@@ -30,11 +31,15 @@ async def run(on_new_article, *, stop_event: asyncio.Event | None = None) -> Non
     while not (stop_event and stop_event.is_set()):
         try:
             items = await fetch_all(FEEDS)
+            # Pre-load recently sent titles so we can dedup cross-source within iteration too.
+            recent_cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+            sent_titles = db.recent_sent_titles(recent_cutoff)
             new_count = 0
             seeded_count = 0
             clickbait_count = 0
             women_skipped = 0
             mocking_skipped = 0
+            dup_skipped = 0
             for item in items:
                 full_text = f"{item.get('title', '')} {item.get('summary', '')}"
                 is_relevant = item["arsenal_only"] or matches_arsenal(full_text)
@@ -61,9 +66,16 @@ async def run(on_new_article, *, stop_event: asyncio.Event | None = None) -> Non
                 if is_clickbait(item.get("title", "")):
                     clickbait_count += 1
                     continue
+                title = item.get("title", "")
+                duplicate_of = find_similar(title, sent_titles)
+                if duplicate_of:
+                    dup_skipped += 1
+                    log.debug("Skipping near-duplicate of %r: %r", duplicate_of, title)
+                    continue
                 new_count += 1
                 await on_new_article(item)
                 db.mark_article_sent(item["link"])
+                sent_titles.append(title)
             if new_count:
                 log.info("news_poller: %d new article(s) sent", new_count)
             if seeded_count:
@@ -74,6 +86,8 @@ async def run(on_new_article, *, stop_event: asyncio.Event | None = None) -> Non
                 log.info("news_poller: %d women's-team article(s) filtered out", women_skipped)
             if mocking_skipped:
                 log.info("news_poller: %d mocking/banter article(s) filtered out", mocking_skipped)
+            if dup_skipped:
+                log.info("news_poller: %d cross-source duplicate(s) skipped", dup_skipped)
         except Exception:
             log.exception("news_poller iteration failed; backing off")
         await asyncio.sleep(POLL_SECONDS)

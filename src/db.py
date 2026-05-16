@@ -163,6 +163,21 @@ def mark_article_sent(link: str) -> None:
         conn.execute("UPDATE articles SET sent_individually=1 WHERE link=?", (link,))
 
 
+def recent_sent_titles(since_iso: str) -> list[str]:
+    """Titles of articles already pushed since the given timestamp."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT title FROM articles
+            WHERE sent_individually = 1 AND seen_at >= ?
+            ORDER BY seen_at DESC
+            LIMIT 200
+            """,
+            (since_iso,),
+        ).fetchall()
+        return [r["title"] for r in rows if r["title"]]
+
+
 def get_articles_for_digest(since_iso: str) -> list[dict]:
     with get_conn() as conn:
         rows = conn.execute(

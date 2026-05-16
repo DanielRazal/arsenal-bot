@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 
 from src import formatting
 from src.notifiers.fanout import Fanout
+from src.sources.dedup import find_similar
 from src.sources.feeds import (
     FEEDS,
     is_clickbait,
@@ -40,6 +41,7 @@ async def main() -> None:
 
     relevant: list[dict] = []
     seen_links: set[str] = set()
+    accepted_titles: list[str] = []
     for item in items:
         if item.get("link") in seen_links:
             continue
@@ -56,7 +58,11 @@ async def main() -> None:
             continue
         if is_clickbait(item.get("title", "")):
             continue
+        title = item.get("title", "")
+        if find_similar(title, accepted_titles):
+            continue
         seen_links.add(item["link"])
+        accepted_titles.append(title)
         relevant.append(item)
 
     log.info("Found %d fresh article(s) within %s window", len(relevant), FRESHNESS)
