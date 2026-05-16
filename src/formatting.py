@@ -118,6 +118,36 @@ def format_next_matches(matches: list[dict]) -> str:
     return "\n".join(lines).rstrip()
 
 
+def format_standings(rows: list[dict]) -> str:
+    if not rows:
+        return "📊 *לא הצלחתי לשלוף את טבלת הליגה כרגע*"
+    arsenal_row = next((r for r in rows if r.get("team_id") == ARSENAL_TEAM_ID), None)
+    lines = ["🏆 *Premier League*", ""]
+    for row in rows:
+        rank = row.get("position", "?")
+        name = row.get("team_name", "")
+        played = row.get("played", 0)
+        points = row.get("points", 0)
+        gd = row.get("goal_difference", 0)
+        gd_str = f"+{gd}" if (gd or 0) > 0 else str(gd)
+        prefix = "⭐" if row.get("team_id") == ARSENAL_TEAM_ID else "  "
+        lines.append(f"{prefix} {rank:>2}. {name:<14} {points:>2} נק · {played} מש · {gd_str}")
+        # Separator after Top 4 and before relegation zone
+        if rank == 4:
+            lines.append("   " + "─" * 28)
+        if rank == 17:
+            lines.append("   " + "─" * 28)
+    if arsenal_row is not None and arsenal_row.get("position", 1) > 1:
+        leader = rows[0]
+        diff = (leader.get("points") or 0) - (arsenal_row.get("points") or 0)
+        lines.append("")
+        if diff == 0:
+            lines.append(f"_שווים נקודות עם {leader.get('team_name')} 🥇_")
+        else:
+            lines.append(f"_פער של {diff} נק' מ-{leader.get('team_name')}_")
+    return "\n".join(lines)
+
+
 def format_news_item(article: dict) -> str:
     title = article.get("title", "")
     source = article.get("source", "")

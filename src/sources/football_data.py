@@ -34,6 +34,35 @@ class FootballDataClient:
         data = await self._get(f"/matches/{match_id}")
         return self._normalize_match(data.get("match", data))
 
+    async def get_standings(self, competition: str = "PL") -> list[dict]:
+        """Return the TOTAL standings table for the given competition.
+
+        Default 'PL' = Premier League. Each row contains rank, team, played,
+        won, draw, lost, points, goals_for, goals_against, goal_difference.
+        """
+        data = await self._get(f"/competitions/{competition}/standings")
+        for table in data.get("standings", []):
+            if table.get("type") == "TOTAL":
+                return [self._normalize_standing_row(r) for r in table.get("table", [])]
+        return []
+
+    @staticmethod
+    def _normalize_standing_row(row: dict) -> dict:
+        return {
+            "position": row.get("position"),
+            "team_id": (row.get("team") or {}).get("id"),
+            "team_name": (row.get("team") or {}).get("shortName") or (row.get("team") or {}).get("name", ""),
+            "played": row.get("playedGames"),
+            "won": row.get("won"),
+            "draw": row.get("draw"),
+            "lost": row.get("lost"),
+            "points": row.get("points"),
+            "goals_for": row.get("goalsFor"),
+            "goals_against": row.get("goalsAgainst"),
+            "goal_difference": row.get("goalDifference"),
+            "form": row.get("form"),
+        }
+
     @staticmethod
     def _normalize_match(m: dict) -> dict:
         score = m.get("score", {}).get("fullTime", {}) or {}

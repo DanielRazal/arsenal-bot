@@ -42,7 +42,16 @@ async def main() -> None:
             log.exception("/next command failed")
             return "לא הצלחתי לשלוף את המשחקים כרגע, נסה שוב בעוד דקה."
 
+    async def cmd_standings(_args: str) -> str:
+        try:
+            rows = await fd_client.get_standings("PL")
+            return formatting.format_standings(rows)
+        except Exception:
+            log.exception("/standings command failed")
+            return "לא הצלחתי לשלוף את הטבלה כרגע, נסה שוב בעוד דקה."
+
     fanout.register_telegram_command("next", cmd_next)
+    fanout.register_telegram_command("standings", cmd_standings)
 
     async def on_event(event: dict) -> None:
         if event["type"] == "goal":
