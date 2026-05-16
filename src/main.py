@@ -11,7 +11,7 @@ from .llm.client import LLMClient
 from .llm.match_summary import summarize_match
 from .notifiers.fanout import Fanout
 from .sources.football_data import FootballDataClient
-from .workers import match_watcher, morning_digest, news_poller
+from .workers import match_watcher, morning_digest, news_poller, spurs_watcher
 
 
 def _configure_logging() -> None:
@@ -75,6 +75,9 @@ async def main() -> None:
     async def on_digest(text: str, count: int) -> None:
         await fanout.send(formatting.format_morning_digest(text, count))
 
+    async def on_spurs_loss(match: dict) -> None:
+        await fanout.send(formatting.format_spurs_loss(match))
+
     stop_event = asyncio.Event()
     loop = asyncio.get_running_loop()
 
@@ -103,6 +106,7 @@ async def main() -> None:
     await fanout.start()
     tasks = [
         match_watcher.run(on_event, on_prematch, on_finished, on_halftime, stop_event=stop_event),
+        spurs_watcher.run(on_spurs_loss, stop_event=stop_event),
         stop_event.wait(),
     ]
     if ENABLE_NEWS_POLLER:

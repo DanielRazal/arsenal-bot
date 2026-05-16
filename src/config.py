@@ -26,6 +26,7 @@ GROQ_API_KEY = _require("GROQ_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 ARSENAL_TEAM_ID = int(os.getenv("ARSENAL_TEAM_ID", "57"))
+SPURS_TEAM_ID = int(os.getenv("SPURS_TEAM_ID", "73"))
 TIMEZONE = os.getenv("TIMEZONE", "Asia/Jerusalem")
 MORNING_DIGEST_HOUR = int(os.getenv("MORNING_DIGEST_HOUR", "8"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

@@ -25,9 +25,12 @@ class FootballDataClient:
         resp.raise_for_status()
         return resp.json()
 
-    async def get_team_matches(self, status: str | None = None) -> list[dict]:
+    async def get_team_matches(
+        self, status: str | None = None, *, team_id: int | None = None
+    ) -> list[dict]:
+        team = team_id if team_id is not None else ARSENAL_TEAM_ID
         params = f"?status={status}" if status else ""
-        data = await self._get(f"/teams/{ARSENAL_TEAM_ID}/matches{params}")
+        data = await self._get(f"/teams/{team}/matches{params}")
         return [self._normalize_match(m) for m in data.get("matches", [])]
 
     async def get_match(self, match_id: int) -> dict:

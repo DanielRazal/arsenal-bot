@@ -148,6 +148,19 @@ def format_standings(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def format_spurs_loss(match: dict) -> str:
+    home = match["home_team"]
+    away = match["away_team"]
+    score = f"{match.get('score_home') or 0}–{match.get('score_away') or 0}"
+    competition = match.get("competition") or "משחק"
+    return (
+        f"🎉 *Spurs lost again!* 🍿\n"
+        f"🏆 {competition}\n"
+        f"📊 {home} {score} {away}\n"
+        f"_עוד יום טוב להיות גאנר._"
+    )
+
+
 def format_news_item(article: dict) -> str:
     title = article.get("title", "")
     source = article.get("source", "")
