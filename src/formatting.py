@@ -2,6 +2,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from .config import ARSENAL_TEAM_ID, TIMEZONE
+from .hebrew_names import hebrewize
 
 
 def _local_time(utc_iso: str) -> str:
@@ -26,7 +27,7 @@ def format_prematch(match: dict) -> str:
 def format_goal(event: dict) -> str:
     match = event["match"]
     minute = event.get("minute", "?")
-    scorer = event.get("scorer", "Unknown")
+    scorer = hebrewize(event.get("scorer", "Unknown"))
     team = event.get("team", "")
     is_arsenal = event.get("is_arsenal", False)
     score = f"{match.get('score_home') or 0}–{match.get('score_away') or 0}"
@@ -43,7 +44,7 @@ def format_goal(event: dict) -> str:
 def format_red_card(event: dict) -> str:
     match = event["match"]
     minute = event.get("minute", "?")
-    player = event.get("player", "Unknown")
+    player = hebrewize(event.get("player", "Unknown"))
     team = event.get("team", "")
     is_arsenal = event.get("is_arsenal", False)
     second_yellow = event.get("second_yellow", False)

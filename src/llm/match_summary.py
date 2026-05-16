@@ -1,6 +1,7 @@
 import json
 import logging
 
+from ..hebrew_names import hebrewize
 from .client import LLMClient
 
 log = logging.getLogger(__name__)
@@ -11,6 +12,7 @@ SYSTEM_PROMPT = """אתה פרשן ספורט בעברית, אוהד ארסנל 
 
 כללים:
 - 4-6 שורות בלבד.
+- כל הטקסט בעברית בלבד. אל תכתוב שמות באנגלית — השמות ב-JSON שתקבל כבר בעברית, השתמש בהם בדיוק כפי שהם.
 - התחל מהתוצאה בהקשר רגשי (חגיגי לניצחון, מר לתבוסה, ספקני לתיקו).
 - הזכר את המבקיעים והדקות החשובות.
 - צ'מצ'מ קצת על השופט / היריב / הכוכבים — אבל בטון משחק, לא רעיל.
@@ -29,7 +31,7 @@ async def summarize_match(client: LLMClient, match: dict) -> str:
         "goals": [
             {
                 "minute": g.get("minute"),
-                "scorer": (g.get("scorer") or {}).get("name"),
+                "scorer": hebrewize((g.get("scorer") or {}).get("name") or ""),
                 "team": (g.get("team") or {}).get("name"),
                 "type": g.get("type"),
             }
@@ -38,7 +40,7 @@ async def summarize_match(client: LLMClient, match: dict) -> str:
         "bookings": [
             {
                 "minute": b.get("minute"),
-                "player": (b.get("player") or {}).get("name"),
+                "player": hebrewize((b.get("player") or {}).get("name") or ""),
                 "team": (b.get("team") or {}).get("name"),
                 "card": b.get("card"),
             }
