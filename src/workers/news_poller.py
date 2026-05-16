@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from datetime import datetime, timedelta, timezone
 
 from .. import db
 from ..sources.feeds import FEEDS, matches_arsenal
@@ -8,6 +9,14 @@ from ..sources.rss import fetch_all
 log = logging.getLogger(__name__)
 
 POLL_SECONDS = 15 * 60
+FRESHNESS_WINDOW = timedelta(hours=24)
+
+
+def _is_fresh(published_dt: datetime | None) -> bool:
+    """Articles missing a timestamp or older than 24h are stored but not sent."""
+    if published_dt is None:
+        return False
+    return datetime.now(timezone.utc) - published_dt <= FRESHNESS_WINDOW
 
 
 async def run(on_new_article, *, stop_event: asyncio.Event | None = None) -> None:
@@ -16,6 +25,7 @@ async def run(on_new_article, *, stop_event: asyncio.Event | None = None) -> Non
         try:
             items = await fetch_all(FEEDS)
             new_count = 0
+            seeded_count = 0
             for item in items:
                 is_relevant = item["arsenal_only"] or matches_arsenal(
                     f"{item.get('title', '')} {item.get('summary', '')}"
@@ -29,12 +39,18 @@ async def run(on_new_article, *, stop_event: asyncio.Event | None = None) -> Non
                     summary=item.get("summary", ""),
                     published_at=item.get("published", ""),
                 )
-                if inserted:
+                if not inserted:
+                    continue
+                if _is_fresh(item.get("published_dt")):
                     new_count += 1
                     await on_new_article(item)
                     db.mark_article_sent(item["link"])
+                else:
+                    seeded_count += 1
             if new_count:
                 log.info("news_poller: %d new article(s) sent", new_count)
+            if seeded_count:
+                log.info("news_poller: %d older article(s) seeded silently", seeded_count)
         except Exception:
             log.exception("news_poller iteration failed; backing off")
         await asyncio.sleep(POLL_SECONDS)

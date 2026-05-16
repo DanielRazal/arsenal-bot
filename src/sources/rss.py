@@ -1,5 +1,7 @@
 import asyncio
 import logging
+from datetime import datetime, timezone
+from time import struct_time
 from typing import Iterable
 
 import feedparser
@@ -31,10 +33,22 @@ async def fetch_feed(url: str) -> list[dict]:
             "title": entry.get("title", ""),
             "summary": entry.get("summary", "") or entry.get("description", ""),
             "published": entry.get("published", "") or entry.get("updated", ""),
+            "published_dt": _to_datetime(
+                entry.get("published_parsed") or entry.get("updated_parsed")
+            ),
         }
         for entry in parsed.entries
         if entry.get("link")
     ]
+
+
+def _to_datetime(parsed_time: struct_time | None) -> datetime | None:
+    if parsed_time is None:
+        return None
+    try:
+        return datetime(*parsed_time[:6], tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        return None
 
 
 async def fetch_all(feeds: Iterable[dict]) -> list[dict]:
