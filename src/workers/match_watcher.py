@@ -105,10 +105,19 @@ async def _handle_prematch(match: dict, on_prematch) -> None:
     db.mark_prematch_sent(match["id"])
 
 
+async def _handle_halftime(match: dict, on_halftime) -> None:
+    if db.halftime_already_sent(match["id"]):
+        return
+    log.info("Sending halftime alert for match %s", match["id"])
+    await on_halftime(match)
+    db.mark_halftime_sent(match["id"])
+
+
 async def run(
     on_event,
     on_prematch,
     on_finished,
+    on_halftime,
     *,
     stop_event: asyncio.Event | None = None,
 ) -> None:
@@ -120,6 +129,8 @@ async def run(
                 live = await _check_live_match(client)
                 if live:
                     await _handle_live_match(live, on_event)
+                    if live["status"] == "PAUSED":
+                        await _handle_halftime(live, on_halftime)
                     if live["status"] == "FINISHED":
                         await _handle_finished_match(live, on_finished)
                     await asyncio.sleep(LIVE_POLL_SECONDS)

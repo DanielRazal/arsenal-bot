@@ -15,8 +15,12 @@ CREATE TABLE IF NOT EXISTS matches (
     score_home INTEGER,
     score_away INTEGER,
     summary_sent INTEGER DEFAULT 0,
-    prematch_alert_sent INTEGER DEFAULT 0
+    prematch_alert_sent INTEGER DEFAULT 0,
+    halftime_alert_sent INTEGER DEFAULT 0
 );
+
+-- Migration: ensure halftime_alert_sent exists on pre-existing DBs
+-- (SQLite ignores ADD COLUMN if it already exists when wrapped in pragma_table_info check below)
 
 CREATE TABLE IF NOT EXISTS match_events (
     match_id INTEGER,
@@ -45,6 +49,14 @@ def init_db(path: Path = DB_PATH) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(path) as conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Add columns to existing tables when the schema evolves."""
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(matches)").fetchall()}
+    if "halftime_alert_sent" not in cols:
+        conn.execute("ALTER TABLE matches ADD COLUMN halftime_alert_sent INTEGER DEFAULT 0")
 
 
 @contextmanager
@@ -110,6 +122,19 @@ def mark_summary_sent(match_id: int) -> None:
 def mark_prematch_sent(match_id: int) -> None:
     with get_conn() as conn:
         conn.execute("UPDATE matches SET prematch_alert_sent=1 WHERE id=?", (match_id,))
+
+
+def mark_halftime_sent(match_id: int) -> None:
+    with get_conn() as conn:
+        conn.execute("UPDATE matches SET halftime_alert_sent=1 WHERE id=?", (match_id,))
+
+
+def halftime_already_sent(match_id: int) -> bool:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT halftime_alert_sent FROM matches WHERE id=?", (match_id,)
+        ).fetchone()
+        return row is not None and row["halftime_alert_sent"] == 1
 
 
 def match_needs_summary(match_id: int) -> bool:

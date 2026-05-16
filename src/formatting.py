@@ -58,6 +58,27 @@ def format_red_card(event: dict) -> str:
     return f"{verdict}\n📊 {home} {score} {away}"
 
 
+def format_halftime(match: dict) -> str:
+    home = match["home_team"]
+    away = match["away_team"]
+    score_home = match.get("score_home") or 0
+    score_away = match.get("score_away") or 0
+    arsenal_home = match.get("home_team_id") == ARSENAL_TEAM_ID
+    arsenal_score = score_home if arsenal_home else score_away
+    opp_score = score_away if arsenal_home else score_home
+    if arsenal_score > opp_score:
+        mood = "_מובילים, עוד 45 דקות להיאחז_ 💪"
+    elif arsenal_score == opp_score:
+        mood = "_עוד 45 דקות לשבור את התיקו_"
+    else:
+        mood = "_פיגור, צריך מהפך בחצי השני_ 😤"
+    return (
+        f"⏸ *חצי משחק*\n"
+        f"📊 {home} {score_home}–{score_away} {away}\n"
+        f"{mood}"
+    )
+
+
 def format_match_finished(match: dict, summary_text: str) -> str:
     home = match["home_team"]
     away = match["away_team"]

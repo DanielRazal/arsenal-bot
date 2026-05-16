@@ -38,6 +38,9 @@ async def main() -> None:
     async def on_prematch(match: dict) -> None:
         await fanout.send(formatting.format_prematch(match))
 
+    async def on_halftime(match: dict) -> None:
+        await fanout.send(formatting.format_halftime(match))
+
     async def on_finished(match: dict) -> None:
         summary_text = await summarize_match(llm, match)
         await fanout.send(formatting.format_match_finished(match, summary_text))
@@ -72,7 +75,7 @@ async def main() -> None:
     log.info("Arsenal bot starting…")
     try:
         await asyncio.gather(
-            match_watcher.run(on_event, on_prematch, on_finished, stop_event=stop_event),
+            match_watcher.run(on_event, on_prematch, on_finished, on_halftime, stop_event=stop_event),
             news_poller.run(on_new_article, stop_event=stop_event),
             stop_event.wait(),
         )
