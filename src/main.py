@@ -6,7 +6,7 @@ import sys
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from . import db, formatting
-from .config import LOG_LEVEL, TIMEZONE
+from .config import ENABLE_MORNING_DIGEST, ENABLE_NEWS_POLLER, LOG_LEVEL, TIMEZONE
 from .llm.client import LLMClient
 from .llm.match_summary import summarize_match
 from .notifiers.fanout import Fanout
@@ -84,17 +84,24 @@ async def main() -> None:
             signal.signal(sig, _request_stop)
 
     scheduler = AsyncIOScheduler(timezone=TIMEZONE)
-    morning_digest.schedule(scheduler, llm, on_digest)
+    if ENABLE_MORNING_DIGEST:
+        morning_digest.schedule(scheduler, llm, on_digest)
+    else:
+        log.info("Morning digest disabled (handled by GitHub Actions)")
     scheduler.start()
 
     log.info("Arsenal bot starting…")
     await fanout.start()
+    tasks = [
+        match_watcher.run(on_event, on_prematch, on_finished, on_halftime, stop_event=stop_event),
+        stop_event.wait(),
+    ]
+    if ENABLE_NEWS_POLLER:
+        tasks.insert(1, news_poller.run(on_new_article, stop_event=stop_event))
+    else:
+        log.info("News poller disabled (handled by GitHub Actions)")
     try:
-        await asyncio.gather(
-            match_watcher.run(on_event, on_prematch, on_finished, on_halftime, stop_event=stop_event),
-            news_poller.run(on_new_article, stop_event=stop_event),
-            stop_event.wait(),
-        )
+        await asyncio.gather(*tasks)
     finally:
         log.info("Shutting down…")
         scheduler.shutdown(wait=False)

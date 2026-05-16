@@ -30,4 +30,16 @@ TIMEZONE = os.getenv("TIMEZONE", "Asia/Jerusalem")
 MORNING_DIGEST_HOUR = int(os.getenv("MORNING_DIGEST_HOUR", "8"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
+
+def _flag(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+# Set these to false when delegating to GitHub Actions
+ENABLE_NEWS_POLLER = _flag("ENABLE_NEWS_POLLER", True)
+ENABLE_MORNING_DIGEST = _flag("ENABLE_MORNING_DIGEST", True)
+
 DB_PATH = ROOT_DIR / "data" / "state.db"

@@ -1,0 +1,67 @@
+"""One-shot news poll for GitHub Actions.
+
+Stateless: uses a tight freshness window matched to the workflow cron
+schedule (every 15 min). Articles published outside the window are
+ignored, which avoids cross-run duplicates without needing a shared DB.
+"""
+import asyncio
+import logging
+import sys
+from datetime import datetime, timedelta, timezone
+
+from src import formatting
+from src.notifiers.fanout import Fanout
+from src.sources.feeds import FEEDS, is_clickbait, matches_arsenal
+from src.sources.rss import fetch_all
+
+# Cron runs every 15 min; allow 3 min buffer for cron drift.
+FRESHNESS = timedelta(minutes=18)
+
+
+def _configure_logging() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s | %(message)s",
+        stream=sys.stdout,
+    )
+
+
+async def main() -> None:
+    _configure_logging()
+    log = logging.getLogger("run_news_once")
+    items = await fetch_all(FEEDS)
+    cutoff = datetime.now(timezone.utc) - FRESHNESS
+
+    relevant: list[dict] = []
+    seen_links: set[str] = set()
+    for item in items:
+        if item.get("link") in seen_links:
+            continue
+        is_relevant = item["arsenal_only"] or matches_arsenal(
+            f"{item.get('title', '')} {item.get('summary', '')}"
+        )
+        if not is_relevant:
+            continue
+        published = item.get("published_dt")
+        if published is None or published < cutoff:
+            continue
+        if is_clickbait(item.get("title", "")):
+            continue
+        seen_links.add(item["link"])
+        relevant.append(item)
+
+    log.info("Found %d fresh article(s) within %s window", len(relevant), FRESHNESS)
+    if not relevant:
+        return
+
+    fanout = Fanout.default()
+    try:
+        for item in relevant:
+            await fanout.send(formatting.format_news_item(item))
+        log.info("Pushed %d article(s) to Telegram + Discord", len(relevant))
+    finally:
+        await fanout.close()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
