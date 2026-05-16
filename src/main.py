@@ -32,6 +32,8 @@ async def main() -> None:
     async def on_event(event: dict) -> None:
         if event["type"] == "goal":
             await fanout.send(formatting.format_goal(event))
+        elif event["type"] == "red_card":
+            await fanout.send(formatting.format_red_card(event))
 
     async def on_prematch(match: dict) -> None:
         await fanout.send(formatting.format_prematch(match))

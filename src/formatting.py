@@ -40,6 +40,24 @@ def format_goal(event: dict) -> str:
     )
 
 
+def format_red_card(event: dict) -> str:
+    match = event["match"]
+    minute = event.get("minute", "?")
+    player = event.get("player", "Unknown")
+    team = event.get("team", "")
+    is_arsenal = event.get("is_arsenal", False)
+    second_yellow = event.get("second_yellow", False)
+    card_desc = "כרטיס צהוב שני" if second_yellow else "כרטיס אדום ישיר"
+    if is_arsenal:
+        verdict = f"🟥 *הורחק!* (לרעתנו)\n⏱ דקה {minute}' — {player}\n{card_desc} 😡"
+    else:
+        verdict = f"🟥 *הורחק יריב!* 🎉\n⏱ דקה {minute}' — {player} ({team})\n{card_desc} — עכשיו אנחנו ביתרון מספרי"
+    score = f"{match.get('score_home') or 0}–{match.get('score_away') or 0}"
+    home = match["home_team"]
+    away = match["away_team"]
+    return f"{verdict}\n📊 {home} {score} {away}"
+
+
 def format_match_finished(match: dict, summary_text: str) -> str:
     home = match["home_team"]
     away = match["away_team"]

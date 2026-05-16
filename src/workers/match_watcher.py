@@ -44,6 +44,9 @@ async def _handle_finished_match(match: dict, on_finished) -> None:
         db.mark_summary_sent(match["id"])
 
 
+RED_CARD_TYPES = {"RED_CARD", "YELLOW_RED_CARD", "RED"}
+
+
 async def _handle_live_match(match: dict, on_event) -> None:
     db.upsert_match(match)
     raw = match.get("raw", {})
@@ -62,6 +65,29 @@ async def _handle_live_match(match: dict, on_event) -> None:
             "scorer": scorer_name,
             "team": team_name,
             "is_arsenal": is_arsenal,
+        })
+        db.mark_event_sent(match["id"], event_id)
+
+    bookings = raw.get("bookings", []) or []
+    for booking in bookings:
+        card_type = (booking.get("card") or "").upper()
+        if card_type not in RED_CARD_TYPES:
+            continue
+        player_id = (booking.get("player") or {}).get("id", "?")
+        event_id = f"red-{booking.get('minute')}-{player_id}"
+        if db.event_already_sent(match["id"], event_id):
+            continue
+        player_name = (booking.get("player") or {}).get("name", "Unknown")
+        team_name = (booking.get("team") or {}).get("name", "")
+        is_arsenal = (booking.get("team") or {}).get("id") == ARSENAL_TEAM_ID
+        await on_event({
+            "type": "red_card",
+            "match": match,
+            "minute": booking.get("minute"),
+            "player": player_name,
+            "team": team_name,
+            "is_arsenal": is_arsenal,
+            "second_yellow": card_type == "YELLOW_RED_CARD",
         })
         db.mark_event_sent(match["id"], event_id)
 
