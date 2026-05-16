@@ -44,8 +44,10 @@ class TelegramNotifier:
             self._app.add_handler(CommandHandler(name, self._make_handler(handler_fn)))
         # Channel posts don't go through CommandHandler — register a separate
         # dispatcher that catches /commands posted in channels where the bot is admin.
+        # We filter on TEXT (not COMMAND) because Telegram doesn't always tag the
+        # BotCommand entity on channel posts; the handler itself does the / prefix check.
         self._app.add_handler(MessageHandler(
-            filters.UpdateType.CHANNEL_POST & filters.COMMAND,
+            filters.UpdateType.CHANNEL_POST & filters.TEXT,
             self._dispatch_channel_command,
         ))
         await self._app.initialize()

@@ -122,29 +122,36 @@ def format_standings(rows: list[dict]) -> str:
     if not rows:
         return "📊 *לא הצלחתי לשלוף את טבלת הליגה כרגע*"
     arsenal_row = next((r for r in rows if r.get("team_id") == ARSENAL_TEAM_ID), None)
-    lines = ["🏆 *Premier League*", ""]
+    played = rows[0].get("played", 0) if rows else 0
+
+    lines = [f"🏆 *Premier League · מחזור {played}*", ""]
     for row in rows:
-        rank = row.get("position", "?")
+        rank = row.get("position", 0)
         name = row.get("team_name", "")
-        played = row.get("played", 0)
         points = row.get("points", 0)
         gd = row.get("goal_difference", 0)
         gd_str = f"+{gd}" if (gd or 0) > 0 else str(gd)
-        prefix = "⭐" if row.get("team_id") == ARSENAL_TEAM_ID else "  "
-        lines.append(f"{prefix} {rank:>2}. {name:<14} {points:>2} נק · {played} מש · {gd_str}")
-        # Separator after Top 4 and before relegation zone
-        if rank == 4:
-            lines.append("   " + "─" * 28)
-        if rank == 17:
-            lines.append("   " + "─" * 28)
-    if arsenal_row is not None and arsenal_row.get("position", 1) > 1:
-        leader = rows[0]
-        diff = (leader.get("points") or 0) - (arsenal_row.get("points") or 0)
-        lines.append("")
-        if diff == 0:
-            lines.append(f"_שווים נקודות עם {leader.get('team_name')} 🥇_")
+        is_arsenal = row.get("team_id") == ARSENAL_TEAM_ID
+        if is_arsenal:
+            lines.append(f"⭐ *{rank}. {name}* — *{points} pts* ({gd_str})")
         else:
-            lines.append(f"_פער של {diff} נק' מ-{leader.get('team_name')}_")
+            lines.append(f"   {rank}. {name} — {points} pts ({gd_str})")
+        if rank == 4 or rank == 17:
+            lines.append("   ━━━━━━━━━━━━━━━━━━")
+
+    lines.append("")
+    if arsenal_row is None:
+        return "\n".join(lines)
+    arsenal_pos = arsenal_row.get("position", 0)
+    if arsenal_pos == 1:
+        lines.append("🥇 _מובילים בליגה!_")
+    else:
+        leader = rows[0]
+        gap = (leader.get("points") or 0) - (arsenal_row.get("points") or 0)
+        if gap == 0:
+            lines.append(f"_שווים בנקודות עם {leader.get('team_name')}_ 🤝")
+        else:
+            lines.append(f"_פער של {gap} נקודות מ-{leader.get('team_name')}_")
     return "\n".join(lines)
 
 
