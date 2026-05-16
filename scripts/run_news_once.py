@@ -11,7 +11,13 @@ from datetime import datetime, timedelta, timezone
 
 from src import formatting
 from src.notifiers.fanout import Fanout
-from src.sources.feeds import FEEDS, is_clickbait, matches_arsenal
+from src.sources.feeds import (
+    FEEDS,
+    is_clickbait,
+    is_mocking_content,
+    is_women_content,
+    matches_arsenal,
+)
 from src.sources.rss import fetch_all
 
 # Cron runs every 15 min; allow 3 min buffer for cron drift.
@@ -37,10 +43,13 @@ async def main() -> None:
     for item in items:
         if item.get("link") in seen_links:
             continue
-        is_relevant = item["arsenal_only"] or matches_arsenal(
-            f"{item.get('title', '')} {item.get('summary', '')}"
-        )
+        full_text = f"{item.get('title', '')} {item.get('summary', '')}"
+        is_relevant = item["arsenal_only"] or matches_arsenal(full_text)
         if not is_relevant:
+            continue
+        if is_women_content(full_text):
+            continue
+        if is_mocking_content(full_text):
             continue
         published = item.get("published_dt")
         if published is None or published < cutoff:

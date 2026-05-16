@@ -45,3 +45,52 @@ def is_clickbait(title: str) -> bool:
     if any(phrase in lowered for phrase in CLICKBAIT_PHRASES):
         return True
     return False
+
+
+WOMEN_KEYWORDS = (
+    "arsenal women", "arsenal ladies", "awfc",
+    " wsl ", " wsl:", " uwcl ",
+    "women's super league", "women's champions league",
+    "barclays women",
+    # Known Arsenal Women players (lowercased, full names only to avoid
+    # false positives with men's team players)
+    "beth mead", "vivianne miedema", "alessia russo",
+    "caitlin foord", "steph catley", "frida maanum",
+    "manuela zinsberger", "leah williamson", "katie mccabe",
+    "lia walti", "lia wälti", "stina blackstenius",
+    "lotte wubben-moy", "rosa kafaji", "michelle agyemang",
+    "victoria pelova", "kim little", "renee slegers",
+)
+
+
+def is_women_content(text: str) -> bool:
+    """True if the text is about Arsenal Women's team."""
+    if not text:
+        return False
+    lowered = f" {text.lower()} "  # pad so word-boundary patterns match
+    return any(kw in lowered for kw in WOMEN_KEYWORDS)
+
+
+MOCKING_PATTERNS = (
+    # Direct mockery / banter
+    "spursy",
+    "bottlejob", "bottle job",
+    "arsenal trolled", "trolling arsenal", "trolled arsenal",
+    "arsenal mocked", "mocking arsenal", "mocked arsenal",
+    "arsenal laughing stock", "arsenal laughing-stock", "laughingstock",
+    "fans mock arsenal", "rivals mock arsenal",
+    "rivals troll arsenal", "twitter mocks arsenal", "twitter trolls arsenal",
+    "rinsed arsenal", "roasted arsenal",
+    # Meme / shitpost markers
+    "shitpost", "shit post", "shitposting",
+    "[meme]", "[memes]", "[shitpost]", "[banter]",
+    " banter ",
+)
+
+
+def is_mocking_content(text: str) -> bool:
+    """True if the text is mocking/joking about Arsenal in a hostile way."""
+    if not text:
+        return False
+    lowered = f" {text.lower()} "  # pad so word-boundary patterns match
+    return any(pattern in lowered for pattern in MOCKING_PATTERNS)

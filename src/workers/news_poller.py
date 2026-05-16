@@ -3,7 +3,13 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from .. import db
-from ..sources.feeds import FEEDS, is_clickbait, matches_arsenal
+from ..sources.feeds import (
+    FEEDS,
+    is_clickbait,
+    is_mocking_content,
+    is_women_content,
+    matches_arsenal,
+)
 from ..sources.rss import fetch_all
 
 log = logging.getLogger(__name__)
@@ -27,11 +33,18 @@ async def run(on_new_article, *, stop_event: asyncio.Event | None = None) -> Non
             new_count = 0
             seeded_count = 0
             clickbait_count = 0
+            women_skipped = 0
+            mocking_skipped = 0
             for item in items:
-                is_relevant = item["arsenal_only"] or matches_arsenal(
-                    f"{item.get('title', '')} {item.get('summary', '')}"
-                )
+                full_text = f"{item.get('title', '')} {item.get('summary', '')}"
+                is_relevant = item["arsenal_only"] or matches_arsenal(full_text)
                 if not is_relevant:
+                    continue
+                if is_women_content(full_text):
+                    women_skipped += 1
+                    continue
+                if is_mocking_content(full_text):
+                    mocking_skipped += 1
                     continue
                 inserted = db.insert_article_if_new(
                     link=item["link"],
@@ -57,6 +70,10 @@ async def run(on_new_article, *, stop_event: asyncio.Event | None = None) -> Non
                 log.info("news_poller: %d older article(s) seeded silently", seeded_count)
             if clickbait_count:
                 log.info("news_poller: %d clickbait article(s) deferred to digest", clickbait_count)
+            if women_skipped:
+                log.info("news_poller: %d women's-team article(s) filtered out", women_skipped)
+            if mocking_skipped:
+                log.info("news_poller: %d mocking/banter article(s) filtered out", mocking_skipped)
         except Exception:
             log.exception("news_poller iteration failed; backing off")
         await asyncio.sleep(POLL_SECONDS)

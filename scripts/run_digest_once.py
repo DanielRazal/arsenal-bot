@@ -13,7 +13,12 @@ from src import formatting
 from src.llm.article_digest import make_digest
 from src.llm.client import LLMClient
 from src.notifiers.fanout import Fanout
-from src.sources.feeds import FEEDS, matches_arsenal
+from src.sources.feeds import (
+    FEEDS,
+    is_mocking_content,
+    is_women_content,
+    matches_arsenal,
+)
 from src.sources.rss import fetch_all
 
 LOOKBACK = timedelta(hours=24)
@@ -39,10 +44,13 @@ async def main() -> None:
         link = item.get("link")
         if not link or link in seen_links:
             continue
-        is_relevant = item["arsenal_only"] or matches_arsenal(
-            f"{item.get('title', '')} {item.get('summary', '')}"
-        )
+        full_text = f"{item.get('title', '')} {item.get('summary', '')}"
+        is_relevant = item["arsenal_only"] or matches_arsenal(full_text)
         if not is_relevant:
+            continue
+        if is_women_content(full_text):
+            continue
+        if is_mocking_content(full_text):
             continue
         published = item.get("published_dt")
         if published is None or published < cutoff:
