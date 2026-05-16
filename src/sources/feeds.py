@@ -19,3 +19,29 @@ def matches_arsenal(text: str) -> bool:
         return False
     lowered = text.lower()
     return any(kw in lowered for kw in ARSENAL_KEYWORDS)
+
+
+CLICKBAIT_PREFIXES = (
+    "could ", "might ", "reportedly ", "rumour ", "rumor ",
+    "report:", "report -", "exclusive:", "exclusive -",
+    "would ", "may ", "set to ", "tipped to ", "linked with ",
+    "in line for ", "considering ", "interested in ",
+)
+
+CLICKBAIT_PHRASES = (
+    " could join ", " could leave ", " could sign ",
+    " linked with a move ", " set for shock ",
+    " transfer rumour ", " transfer rumor ",
+)
+
+
+def is_clickbait(title: str) -> bool:
+    """Speculative transfer-rumor titles — keep in DB for digest, skip push."""
+    if not title:
+        return False
+    lowered = title.lower().lstrip()
+    if any(lowered.startswith(prefix) for prefix in CLICKBAIT_PREFIXES):
+        return True
+    if any(phrase in lowered for phrase in CLICKBAIT_PHRASES):
+        return True
+    return False

@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from .. import db
-from ..sources.feeds import FEEDS, matches_arsenal
+from ..sources.feeds import FEEDS, is_clickbait, matches_arsenal
 from ..sources.rss import fetch_all
 
 log = logging.getLogger(__name__)
@@ -26,6 +26,7 @@ async def run(on_new_article, *, stop_event: asyncio.Event | None = None) -> Non
             items = await fetch_all(FEEDS)
             new_count = 0
             seeded_count = 0
+            clickbait_count = 0
             for item in items:
                 is_relevant = item["arsenal_only"] or matches_arsenal(
                     f"{item.get('title', '')} {item.get('summary', '')}"
@@ -41,16 +42,21 @@ async def run(on_new_article, *, stop_event: asyncio.Event | None = None) -> Non
                 )
                 if not inserted:
                     continue
-                if _is_fresh(item.get("published_dt")):
-                    new_count += 1
-                    await on_new_article(item)
-                    db.mark_article_sent(item["link"])
-                else:
+                if not _is_fresh(item.get("published_dt")):
                     seeded_count += 1
+                    continue
+                if is_clickbait(item.get("title", "")):
+                    clickbait_count += 1
+                    continue
+                new_count += 1
+                await on_new_article(item)
+                db.mark_article_sent(item["link"])
             if new_count:
                 log.info("news_poller: %d new article(s) sent", new_count)
             if seeded_count:
                 log.info("news_poller: %d older article(s) seeded silently", seeded_count)
+            if clickbait_count:
+                log.info("news_poller: %d clickbait article(s) deferred to digest", clickbait_count)
         except Exception:
             log.exception("news_poller iteration failed; backing off")
         await asyncio.sleep(POLL_SECONDS)
