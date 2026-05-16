@@ -101,6 +101,22 @@ def format_match_finished(match: dict, summary_text: str) -> str:
     )
 
 
+def format_next_matches(matches: list[dict]) -> str:
+    if not matches:
+        return "📅 *אין משחקים בלוח הזמנים הקרוב*\n_(או שה-API לא מחזיר נכון, נסה שוב מאוחר יותר)_"
+    lines = ["📅 *המשחקים הבאים של ארסנל*", ""]
+    for i, match in enumerate(matches, 1):
+        kickoff = _local_time(match["utc_date"])
+        competition = match.get("competition") or ""
+        home = match["home_team"]
+        away = match["away_team"]
+        venue_indicator = "🏠" if match.get("home_team_id") == ARSENAL_TEAM_ID else "✈️"
+        lines.append(f"{i}. {venue_indicator} {home} vs {away}")
+        lines.append(f"   🕒 {kickoff} · 🏆 {competition}")
+        lines.append("")
+    return "\n".join(lines).rstrip()
+
+
 def format_news_item(article: dict) -> str:
     title = article.get("title", "")
     source = article.get("source", "")

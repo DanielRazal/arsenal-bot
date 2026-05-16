@@ -10,6 +10,7 @@ from .config import LOG_LEVEL, TIMEZONE
 from .llm.client import LLMClient
 from .llm.match_summary import summarize_match
 from .notifiers.fanout import Fanout
+from .sources.football_data import FootballDataClient
 from .workers import match_watcher, morning_digest, news_poller
 
 
@@ -28,6 +29,20 @@ async def main() -> None:
 
     fanout = Fanout.default()
     llm = LLMClient()
+    fd_client = FootballDataClient()
+
+    async def cmd_next(_args: str) -> str:
+        try:
+            matches = await fd_client.get_team_matches(status="SCHEDULED")
+            if not matches:
+                matches = await fd_client.get_team_matches(status="TIMED")
+            matches.sort(key=lambda m: m["utc_date"])
+            return formatting.format_next_matches(matches[:3])
+        except Exception:
+            log.exception("/next command failed")
+            return "לא הצלחתי לשלוף את המשחקים כרגע, נסה שוב בעוד דקה."
+
+    fanout.register_telegram_command("next", cmd_next)
 
     async def on_event(event: dict) -> None:
         if event["type"] == "goal":
@@ -73,6 +88,7 @@ async def main() -> None:
     scheduler.start()
 
     log.info("Arsenal bot starting…")
+    await fanout.start()
     try:
         await asyncio.gather(
             match_watcher.run(on_event, on_prematch, on_finished, on_halftime, stop_event=stop_event),
@@ -82,6 +98,7 @@ async def main() -> None:
     finally:
         log.info("Shutting down…")
         scheduler.shutdown(wait=False)
+        await fd_client.close()
         await llm.close()
         await fanout.close()
 
