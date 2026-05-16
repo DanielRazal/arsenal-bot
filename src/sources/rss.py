@@ -7,7 +7,11 @@ import httpx
 
 log = logging.getLogger(__name__)
 
-USER_AGENT = "ArsenalBot/1.0 (+https://github.com/personal-use)"
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 "
+    "ArsenalBot/1.0 (+https://github.com/DanielRazal/arsenal-bot)"
+)
 
 
 async def fetch_feed(url: str) -> list[dict]:
