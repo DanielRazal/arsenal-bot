@@ -22,7 +22,7 @@ from src.sources.football_data import FootballDataClient
 
 STATE_FILE = Path(".commands_state.json")
 TG_API = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
-KNOWN_COMMANDS = {"last", "squad", "stats", "next", "standings"}
+KNOWN_COMMANDS = {"last", "squad", "stats", "next", "standings", "help"}
 
 # Poll for this long before exiting. Cron fires every minute, so 55s gives
 # continuous coverage even when GitHub delays the next trigger.
@@ -101,6 +101,8 @@ async def _handle(cmd: str, fd: FootballDataClient, llm: LLMClient) -> str:
         return formatting.format_next_matches(matches[:3])
     if cmd == "standings":
         return formatting.format_standings(await fd.get_standings("PL"))
+    if cmd == "help":
+        return formatting.format_help()
     return ""
 
 

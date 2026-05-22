@@ -81,11 +81,15 @@ async def main() -> None:
             log.exception("/stats command failed")
             return "לא הצלחתי לשלוף את הסטטיסטיקות כרגע."
 
+    async def cmd_help(_args: str) -> str:
+        return formatting.format_help()
+
     fanout.register_telegram_command("next", cmd_next)
     fanout.register_telegram_command("standings", cmd_standings)
     fanout.register_telegram_command("last", cmd_last)
     fanout.register_telegram_command("squad", cmd_squad)
     fanout.register_telegram_command("stats", cmd_stats)
+    fanout.register_telegram_command("help", cmd_help)
 
     async def on_event(event: dict) -> None:
         if event["type"] == "goal":

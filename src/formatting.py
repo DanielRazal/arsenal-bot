@@ -168,6 +168,19 @@ def format_spurs_loss(match: dict) -> str:
     )
 
 
+def format_help() -> str:
+    return (
+        "🔴⚪ *פקודות הבוט של ארסנל*\n\n"
+        "/next — המשחקים הקרובים של ארסנל\n"
+        "/last — סיכום המשחק האחרון עם ניתוח AI\n"
+        "/standings — טבלת הפרמיירליג\n"
+        "/squad — הרכב הקבוצה הנוכחי\n"
+        "/stats — מבקיעי ארסנל בליגה\n"
+        "/help — התפריט הזה\n\n"
+        "_התראות אוטומטיות: גולים, כרטיסים אדומים, חצי גמר, סיכום משחק, חדשות, העברות, פציעות, Spurs שהפסידו ועוד._"
+    )
+
+
 def format_transfer_alert(article: dict) -> str:
     title = article.get("title", "")
     source = article.get("source", "")
