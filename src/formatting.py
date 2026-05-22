@@ -218,8 +218,9 @@ def format_squad(players: list[dict]) -> str:
         lines.append(f"\n{emoji} *{label}*")
         for p in sorted(group, key=lambda x: x.get("name", "")):
             name = p["name"]
-            age = f", {p['age']}" if p.get("age") else ""
-            lines.append(f"`{name}{age}`")
+            age = f" · {p['age']}" if p.get("age") else ""
+            lines.append(f"• {name}{age}")
+    lines.append("\n_נתונים מ-football-data.org — ייתכן שחסרים שחקנים_")
     return "\n".join(lines)
 
 
