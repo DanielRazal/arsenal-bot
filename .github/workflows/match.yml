@@ -1,0 +1,48 @@
+name: Match Watcher
+
+on:
+  schedule:
+    # Every minute — GitHub Actions minimum interval.
+    - cron: '* * * * *'
+  workflow_dispatch: {}
+
+# Cancel an in-flight run when a new tick fires so we never overlap.
+concurrency:
+  group: match-watcher
+  cancel-in-progress: true
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Restore the most recent state file so we know which events were
+      # already sent. The unique key ensures each run saves a fresh entry;
+      # restore-keys picks up the latest cached state by prefix match.
+      - name: Restore match state
+        uses: actions/cache@v4
+        with:
+          path: .match_state.json
+          key: match-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            match-state-
+
+      - name: Watch match
+        env:
+          FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: python -m scripts.run_match_once
