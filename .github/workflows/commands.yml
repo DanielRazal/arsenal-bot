@@ -1,8 +1,9 @@
 name: Command Handler
 
 on:
+  push:
+    branches: [main]
   schedule:
-    # Every minute — same cadence as match watcher.
     - cron: '* * * * *'
   workflow_dispatch: {}
 
