@@ -24,14 +24,14 @@ async def fetch_arsenal_squad() -> list[dict]:
         data = resp.json()
 
     players = []
-    for group in data.get("athletes", []):
-        pos_label = group.get("position", "")
-        position = _POSITION_MAP.get(pos_label, pos_label)
-        for item in group.get("items", []):
-            players.append({
-                "name": item.get("fullName", ""),
-                "position": position,
-                "age": item.get("age"),
-                "jersey": item.get("jersey"),
-            })
+    for player in data.get("athletes", []):
+        if (player.get("status") or {}).get("type") != "active":
+            continue
+        pos_label = (player.get("position") or {}).get("name", "")
+        players.append({
+            "name": player.get("fullName", ""),
+            "position": _POSITION_MAP.get(pos_label, pos_label),
+            "age": player.get("age"),
+            "jersey": player.get("jersey"),
+        })
     return players
