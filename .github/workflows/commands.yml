@@ -15,7 +15,7 @@ concurrency:
 jobs:
   handle:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
 

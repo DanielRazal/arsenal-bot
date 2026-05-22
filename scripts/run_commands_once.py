@@ -23,6 +23,11 @@ STATE_FILE = Path(".commands_state.json")
 TG_API = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 KNOWN_COMMANDS = {"last", "squad", "stats", "next", "standings"}
 
+# Poll for this long before exiting. Cron fires every minute, so 55s gives
+# continuous coverage even when GitHub delays the next trigger.
+POLL_WINDOW = 55
+POLL_INTERVAL = 2
+
 
 def _load_state() -> dict:
     if STATE_FILE.exists():
@@ -98,6 +103,16 @@ async def _handle(cmd: str, fd: FootballDataClient, llm: LLMClient) -> str:
     return ""
 
 
+async def _fetch_updates(tg: httpx.AsyncClient, offset: int) -> list[dict]:
+    resp = await tg.get(
+        f"{TG_API}/getUpdates",
+        params={"offset": offset, "timeout": 0},
+        timeout=10.0,
+    )
+    resp.raise_for_status()
+    return resp.json().get("result", [])
+
+
 async def main() -> None:
     _configure_logging()
     log = logging.getLogger("run_commands_once")
@@ -105,41 +120,41 @@ async def main() -> None:
     state = _load_state()
     offset: int = state.get("offset", 0)
 
-    async with httpx.AsyncClient() as tg:
-        resp = await tg.get(
-            f"{TG_API}/getUpdates",
-            params={"offset": offset, "timeout": 0, "allowed_updates": ["message", "channel_post"]},
-            timeout=10.0,
-        )
-        resp.raise_for_status()
-        updates = resp.json().get("result", [])
-
-    if not updates:
-        log.info("No new updates")
-        return
-
-    # Save offset immediately so we never re-process the same updates
-    # even if a command handler later times out.
-    new_offset = max(u["update_id"] for u in updates) + 1
-    _save_state({"offset": new_offset})
-    log.info("Got %d update(s), new offset=%d", len(updates), new_offset)
-
     fd = FootballDataClient()
     llm = LLMClient()
+    deadline = asyncio.get_event_loop().time() + POLL_WINDOW
+
     try:
         async with httpx.AsyncClient() as tg:
-            for update in updates:
-                cmd, chat_id = _parse_command(update)
-                if not cmd or cmd not in KNOWN_COMMANDS or not chat_id:
-                    continue
-                log.info("Handling /%s for chat %s", cmd, chat_id)
+            while asyncio.get_event_loop().time() < deadline:
                 try:
-                    reply_text = await _handle(cmd, fd, llm)
+                    updates = await _fetch_updates(tg, offset)
                 except Exception:
-                    log.exception("Handler failed for /%s", cmd)
-                    reply_text = "שגיאה פנימית, נסה שוב מאוחר יותר."
-                if reply_text:
-                    await _reply(tg, chat_id, reply_text, log)
+                    log.exception("getUpdates failed, retrying")
+                    await asyncio.sleep(POLL_INTERVAL)
+                    continue
+
+                if not updates:
+                    await asyncio.sleep(POLL_INTERVAL)
+                    continue
+
+                # Advance offset immediately to avoid re-processing on error
+                offset = max(u["update_id"] for u in updates) + 1
+                _save_state({"offset": offset})
+                log.info("Got %d update(s), offset now %d", len(updates), offset)
+
+                for update in updates:
+                    cmd, chat_id = _parse_command(update)
+                    if not cmd or cmd not in KNOWN_COMMANDS or not chat_id:
+                        continue
+                    log.info("Handling /%s for chat %s", cmd, chat_id)
+                    try:
+                        reply_text = await _handle(cmd, fd, llm)
+                    except Exception:
+                        log.exception("Handler failed for /%s", cmd)
+                        reply_text = "שגיאה פנימית, נסה שוב מאוחר יותר."
+                    if reply_text:
+                        await _reply(tg, chat_id, reply_text, log)
     finally:
         await fd.close()
         await llm.close()
