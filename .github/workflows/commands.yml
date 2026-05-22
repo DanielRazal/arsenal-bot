@@ -1,0 +1,46 @@
+name: Command Handler
+
+on:
+  schedule:
+    # Every minute — same cadence as match watcher.
+    - cron: '* * * * *'
+  workflow_dispatch: {}
+
+# Do NOT cancel in-progress runs: a slow /last command (LLM call) must
+# finish before we can reply. Let runs queue instead.
+concurrency:
+  group: command-handler
+  cancel-in-progress: false
+
+jobs:
+  handle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore commands state
+        uses: actions/cache@v4
+        with:
+          path: .commands_state.json
+          key: commands-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            commands-state-
+
+      - name: Process commands
+        env:
+          FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: python -m scripts.run_commands_once

@@ -9,3 +9,5 @@ venv/
 .idea/
 *.log
 .match_state.json
+.commands_state.json
+.standings_state.json
