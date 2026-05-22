@@ -71,6 +71,34 @@ def is_women_content(text: str) -> bool:
     return any(kw in lowered for kw in WOMEN_KEYWORDS)
 
 
+CONFIRMED_TRANSFER_KEYWORDS = (
+    " signs ", " signed ", " joins ", " joined ",
+    " completes ", " completed ", "done deal", "official:",
+    " confirmed", " announces ", " unveiled ",
+)
+
+INJURY_KEYWORDS = (
+    " injured", " injury", " ruled out", " out for ",
+    " sidelined", " fracture", " ligament", " hamstring",
+    " muscle injury", " scan result", " surgery",
+    " פציעה", " נפצע", " ייעדר",
+)
+
+
+def is_confirmed_transfer(text: str) -> bool:
+    if not text:
+        return False
+    lowered = f" {text.lower()} "
+    return any(kw in lowered for kw in CONFIRMED_TRANSFER_KEYWORDS)
+
+
+def is_injury_news(text: str) -> bool:
+    if not text:
+        return False
+    lowered = f" {text.lower()} "
+    return any(kw in lowered for kw in INJURY_KEYWORDS)
+
+
 MOCKING_PATTERNS = (
     # Direct mockery / banter
     "spursy",

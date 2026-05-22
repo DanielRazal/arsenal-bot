@@ -168,6 +168,104 @@ def format_spurs_loss(match: dict) -> str:
     )
 
 
+def format_transfer_alert(article: dict) -> str:
+    title = article.get("title", "")
+    source = article.get("source", "")
+    link = article.get("link", "")
+    return f"🚨 *העברה רשמית!*\n{title}\n🔗 [{source}]({link})"
+
+
+def format_injury_alert(article: dict) -> str:
+    title = article.get("title", "")
+    source = article.get("source", "")
+    link = article.get("link", "")
+    return f"🏥 *עדכון פציעה*\n{title}\n🔗 [{source}]({link})"
+
+
+_POSITION_EMOJI = {
+    "Goalkeeper": "🧤",
+    "Defender": "🛡️",
+    "Midfielder": "⚙️",
+    "Attacker": "⚡",
+}
+
+_POSITION_LABEL = {
+    "Goalkeeper": "שוערים",
+    "Defender": "מגנים",
+    "Midfielder": "קשרים",
+    "Attacker": "חלוצים",
+}
+
+_POSITION_ORDER = ["Goalkeeper", "Defender", "Midfielder", "Attacker"]
+
+
+def format_squad(players: list[dict]) -> str:
+    if not players:
+        return "לא הצלחתי לשלוף את ההרכב כרגע."
+    grouped: dict[str, list[dict]] = {p: [] for p in _POSITION_ORDER}
+    for player in players:
+        pos = player.get("position", "")
+        if pos in grouped:
+            grouped[pos].append(player)
+    lines = ["👥 *הרכב ארסנל FC*"]
+    for pos in _POSITION_ORDER:
+        group = grouped[pos]
+        if not group:
+            continue
+        emoji = _POSITION_EMOJI[pos]
+        label = _POSITION_LABEL[pos]
+        lines.append(f"\n{emoji} *{label}*")
+        for p in sorted(group, key=lambda x: x.get("name", "")):
+            name = hebrewize(p["name"])
+            age = f"גיל {p['age']}" if p.get("age") else ""
+            nat = p.get("nationality", "")
+            detail = " · ".join(filter(None, [age, nat]))
+            lines.append(f"• {name}" + (f" · {detail}" if detail else ""))
+    return "\n".join(lines)
+
+
+def format_stats(scorers: list[dict]) -> str:
+    if not scorers:
+        return "אין שחקני ארסנל ברשימת המבקיעים הבולטים כרגע."
+    lines = ["📊 *מבקיעי ארסנל בליגה — עונה נוכחית*", ""]
+    for i, s in enumerate(scorers, 1):
+        name = hebrewize(s["player_name"])
+        goals = s["goals"]
+        penalties = s.get("penalties", 0)
+        pen_str = f" _(כולל {penalties} פנדל)_" if penalties else ""
+        lines.append(f"{i}. {name} — {goals} ⚽{pen_str}")
+    return "\n".join(lines)
+
+
+def format_standings_alert(event: str, arsenal_row: dict, prev_position: int | None) -> str:
+    pos = arsenal_row.get("position", "?")
+    pts = arsenal_row.get("points", "?")
+    gd = arsenal_row.get("goal_difference", 0) or 0
+    gd_str = f"+{gd}" if gd > 0 else str(gd)
+
+    if event == "first":
+        headline = "🥇 *ארסנל עולים למקום ראשון!*"
+    elif event == "dropped_first":
+        headline = f"📉 *ארסנל ירדו ממקום ראשון — עכשיו במקום {pos}*"
+    elif event == "top4_in":
+        headline = f"📈 *ארסנל חזרו לטופ 4! מקום {pos}*"
+    else:
+        headline = f"⚠️ *ארסנל יצאו מהטופ 4 — עכשיו במקום {pos}*"
+
+    return (
+        f"{headline}\n"
+        f"🏆 Premier League\n"
+        f"📊 {pts} נקודות | הפרש שערים: {gd_str}"
+    )
+
+
+def format_weekly_recap(recap_text: str, week_str: str) -> str:
+    return (
+        f"📅 *סיכום השבוע — {week_str}*\n\n"
+        f"{recap_text}"
+    )
+
+
 def format_news_item(article: dict) -> str:
     title = article.get("title", "")
     source = article.get("source", "")

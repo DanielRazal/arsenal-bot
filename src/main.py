@@ -6,7 +6,7 @@ import sys
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from . import db, formatting
-from .config import ENABLE_MORNING_DIGEST, ENABLE_NEWS_POLLER, LOG_LEVEL, TIMEZONE
+from .config import ARSENAL_TEAM_ID, ENABLE_MORNING_DIGEST, ENABLE_NEWS_POLLER, LOG_LEVEL, TIMEZONE
 from .llm.client import LLMClient
 from .llm.match_summary import summarize_match
 from .notifiers.fanout import Fanout
@@ -50,8 +50,41 @@ async def main() -> None:
             log.exception("/standings command failed")
             return "לא הצלחתי לשלוף את הטבלה כרגע, נסה שוב בעוד דקה."
 
+    async def cmd_last(_args: str) -> str:
+        try:
+            finished = await fd_client.get_team_matches(status="FINISHED")
+            if not finished:
+                return "לא מצאתי משחקים שהסתיימו לאחרונה."
+            finished.sort(key=lambda m: m["utc_date"], reverse=True)
+            match = finished[0]
+            summary = await summarize_match(llm, match)
+            return formatting.format_match_finished(match, summary)
+        except Exception:
+            log.exception("/last command failed")
+            return "לא הצלחתי לשלוף את המשחק האחרון, נסה שוב."
+
+    async def cmd_squad(_args: str) -> str:
+        try:
+            players = await fd_client.get_squad()
+            return formatting.format_squad(players)
+        except Exception:
+            log.exception("/squad command failed")
+            return "לא הצלחתי לשלוף את ההרכב כרגע."
+
+    async def cmd_stats(_args: str) -> str:
+        try:
+            scorers = await fd_client.get_scorers()
+            arsenal_scorers = [s for s in scorers if s["team_id"] == ARSENAL_TEAM_ID]
+            return formatting.format_stats(arsenal_scorers)
+        except Exception:
+            log.exception("/stats command failed")
+            return "לא הצלחתי לשלוף את הסטטיסטיקות כרגע."
+
     fanout.register_telegram_command("next", cmd_next)
     fanout.register_telegram_command("standings", cmd_standings)
+    fanout.register_telegram_command("last", cmd_last)
+    fanout.register_telegram_command("squad", cmd_squad)
+    fanout.register_telegram_command("stats", cmd_stats)
 
     async def on_event(event: dict) -> None:
         if event["type"] == "goal":

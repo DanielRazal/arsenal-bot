@@ -1,4 +1,5 @@
 import logging
+from datetime import date
 from typing import Any
 
 import httpx
@@ -37,6 +38,14 @@ class FootballDataClient:
         data = await self._get(f"/matches/{match_id}")
         return self._normalize_match(data.get("match", data))
 
+    async def get_squad(self) -> list[dict]:
+        data = await self._get(f"/teams/{ARSENAL_TEAM_ID}")
+        return [self._normalize_player(p) for p in data.get("squad", [])]
+
+    async def get_scorers(self, competition: str = "PL") -> list[dict]:
+        data = await self._get(f"/competitions/{competition}/scorers?limit=50")
+        return [self._normalize_scorer(s) for s in data.get("scorers", [])]
+
     async def get_standings(self, competition: str = "PL") -> list[dict]:
         """Return the TOTAL standings table for the given competition.
 
@@ -48,6 +57,37 @@ class FootballDataClient:
             if table.get("type") == "TOTAL":
                 return [self._normalize_standing_row(r) for r in table.get("table", [])]
         return []
+
+    @staticmethod
+    def _normalize_player(p: dict) -> dict:
+        dob = (p.get("dateOfBirth") or "")[:10]
+        age = None
+        if dob:
+            try:
+                birth = date.fromisoformat(dob)
+                today = date.today()
+                age = today.year - birth.year - ((today.month, today.day) < (birth.month, birth.day))
+            except ValueError:
+                pass
+        return {
+            "id": p.get("id"),
+            "name": p.get("name", ""),
+            "position": p.get("position", ""),
+            "age": age,
+            "nationality": p.get("nationality", ""),
+        }
+
+    @staticmethod
+    def _normalize_scorer(s: dict) -> dict:
+        return {
+            "player_name": (s.get("player") or {}).get("name", ""),
+            "player_id": (s.get("player") or {}).get("id"),
+            "team_name": (s.get("team") or {}).get("name", ""),
+            "team_id": (s.get("team") or {}).get("id"),
+            "goals": s.get("goals") or 0,
+            "assists": s.get("assists") or 0,
+            "penalties": s.get("penalties") or 0,
+        }
 
     @staticmethod
     def _normalize_standing_row(row: dict) -> dict:

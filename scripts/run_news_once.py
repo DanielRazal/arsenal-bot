@@ -15,6 +15,8 @@ from src.sources.dedup import find_similar
 from src.sources.feeds import (
     FEEDS,
     is_clickbait,
+    is_confirmed_transfer,
+    is_injury_news,
     is_mocking_content,
     is_women_content,
     matches_arsenal,
@@ -56,14 +58,16 @@ async def main() -> None:
         published = item.get("published_dt")
         if published is None or published < cutoff:
             continue
-        if is_clickbait(item.get("title", "")):
-            continue
         title = item.get("title", "")
+        full_text = f"{title} {item.get('summary', '')}"
+        breaking = is_confirmed_transfer(full_text) or is_injury_news(full_text)
+        if not breaking and is_clickbait(title):
+            continue
         if find_similar(title, accepted_titles):
             continue
         seen_links.add(item["link"])
         accepted_titles.append(title)
-        relevant.append(item)
+        relevant.append({**item, "breaking": breaking})
 
     log.info("Found %d fresh article(s) within %s window", len(relevant), FRESHNESS)
     if not relevant:
@@ -72,7 +76,15 @@ async def main() -> None:
     fanout = Fanout.default()
     try:
         for item in relevant:
-            await fanout.send(formatting.format_news_item(item))
+            if item.get("breaking"):
+                full_text = f"{item.get('title', '')} {item.get('summary', '')}"
+                if is_confirmed_transfer(full_text):
+                    msg = formatting.format_transfer_alert(item)
+                else:
+                    msg = formatting.format_injury_alert(item)
+            else:
+                msg = formatting.format_news_item(item)
+            await fanout.send(msg)
         log.info("Pushed %d article(s) to Telegram + Discord", len(relevant))
     finally:
         await fanout.close()
