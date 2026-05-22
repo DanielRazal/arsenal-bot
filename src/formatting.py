@@ -207,7 +207,8 @@ def format_squad(players: list[dict]) -> str:
         pos = player.get("position", "")
         if pos in grouped:
             grouped[pos].append(player)
-    lines = ["👥 *הרכב ארסנל FC*"]
+    total = sum(len(v) for v in grouped.values())
+    lines = [f"👥 *הרכב ארסנל FC* ({total} שחקנים)"]
     for pos in _POSITION_ORDER:
         group = grouped[pos]
         if not group:
@@ -216,11 +217,9 @@ def format_squad(players: list[dict]) -> str:
         label = _POSITION_LABEL[pos]
         lines.append(f"\n{emoji} *{label}*")
         for p in sorted(group, key=lambda x: x.get("name", "")):
-            name = hebrewize(p["name"])
-            age = f"גיל {p['age']}" if p.get("age") else ""
-            nat = p.get("nationality", "")
-            detail = " · ".join(filter(None, [age, nat]))
-            lines.append(f"• {name}" + (f" · {detail}" if detail else ""))
+            name = p["name"]
+            age = f", {p['age']}" if p.get("age") else ""
+            lines.append(f"`{name}{age}`")
     return "\n".join(lines)
 
 
