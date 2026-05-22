@@ -17,6 +17,7 @@ from src import formatting
 from src.config import ARSENAL_TEAM_ID, TELEGRAM_BOT_TOKEN
 from src.llm.client import LLMClient
 from src.llm.match_summary import summarize_match
+from src.sources.espn import fetch_arsenal_squad
 from src.sources.football_data import FootballDataClient
 
 STATE_FILE = Path(".commands_state.json")
@@ -90,7 +91,7 @@ async def _handle(cmd: str, fd: FootballDataClient, llm: LLMClient) -> str:
         summary = await summarize_match(llm, match)
         return formatting.format_match_finished(match, summary)
     if cmd == "squad":
-        return formatting.format_squad(await fd.get_squad())
+        return formatting.format_squad(await fetch_arsenal_squad())
     if cmd == "stats":
         scorers = [s for s in await fd.get_scorers() if s["team_id"] == ARSENAL_TEAM_ID]
         return formatting.format_stats(scorers)

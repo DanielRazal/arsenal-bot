@@ -220,7 +220,7 @@ def format_squad(players: list[dict]) -> str:
             name = p["name"]
             age = f" · {p['age']}" if p.get("age") else ""
             lines.append(f"• {name}{age}")
-    lines.append("\n_נתונים מ-football-data.org — ייתכן שחסרים שחקנים_")
+    lines.append(f"\n_{total} שחקנים · נתונים מ-ESPN_")
     return "\n".join(lines)
 
 

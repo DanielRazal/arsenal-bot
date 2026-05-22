@@ -7,6 +7,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from . import db, formatting
 from .config import ARSENAL_TEAM_ID, ENABLE_MORNING_DIGEST, ENABLE_NEWS_POLLER, LOG_LEVEL, TIMEZONE
+from .sources.espn import fetch_arsenal_squad
 from .llm.client import LLMClient
 from .llm.match_summary import summarize_match
 from .notifiers.fanout import Fanout
@@ -65,7 +66,7 @@ async def main() -> None:
 
     async def cmd_squad(_args: str) -> str:
         try:
-            players = await fd_client.get_squad()
+            players = await fetch_arsenal_squad()
             return formatting.format_squad(players)
         except Exception:
             log.exception("/squad command failed")
