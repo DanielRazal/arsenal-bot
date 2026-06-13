@@ -24,6 +24,14 @@ class TelegramNotifier:
         """Register a /<name> command that calls handler(args_text) -> reply text."""
         self._command_handlers[name] = handler
 
+    def _is_authorized(self, chat_id: object) -> bool:
+        """Only the configured chat/channel may invoke commands.
+
+        Without this, anyone who knows the bot's username could DM it commands —
+        including /last, which spends a real LLM call — and abuse the quota.
+        """
+        return str(chat_id) == str(self._chat_id)
+
     async def send(self, text: str) -> None:
         try:
             await self._bot.send_message(
@@ -60,6 +68,10 @@ class TelegramNotifier:
 
     def _make_handler(self, handler_fn: CommandReplyFn):
         async def _wrapped(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+            chat = update.effective_chat
+            if chat is None or not self._is_authorized(chat.id):
+                log.warning("Ignoring command from unauthorized chat %s", chat.id if chat else None)
+                return
             args_text = " ".join(context.args) if context.args else ""
             try:
                 reply = await handler_fn(args_text)
@@ -77,6 +89,9 @@ class TelegramNotifier:
     ) -> None:
         post = update.channel_post
         if post is None or not post.text:
+            return
+        if not self._is_authorized(post.chat.id):
+            log.warning("Ignoring channel command from unauthorized chat %s", post.chat.id)
             return
         text = post.text.lstrip()
         if not text.startswith("/"):

@@ -30,6 +30,13 @@ def _configure_logging() -> None:
         format="%(asctime)s %(levelname)s %(name)s | %(message)s",
         stream=sys.stdout,
     )
+    # SECURITY: httpx logs every request line at INFO, which includes the full
+    # URL — and the Telegram bot token is embedded in that URL (/bot<TOKEN>/…)
+    # and the Discord webhook URL *is* a secret. Silence these libraries so
+    # credentials never reach the logs (kept separately from the app's own
+    # INFO logs, which carry no secrets).
+    for noisy in ("httpx", "httpcore", "telegram", "telegram.ext", "apscheduler"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
 async def main() -> None:
