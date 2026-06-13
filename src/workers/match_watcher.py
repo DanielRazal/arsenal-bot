@@ -202,6 +202,7 @@ async def run(
                     continue
 
                 upcoming = await _find_next_match(client)
+                minutes_to_kickoff = None
                 if upcoming:
                     kickoff = _parse_iso(upcoming["utc_date"])
                     minutes_to_kickoff = (kickoff - datetime.now(timezone.utc)).total_seconds() / 60
@@ -219,7 +220,14 @@ async def run(
                     if datetime.now(timezone.utc) - finished_at < timedelta(hours=4):
                         await _handle_finished_match(latest, on_finished)
 
-                await asyncio.sleep(IDLE_POLL_SECONDS)
+                # Kickoff-aware idle: sleep only until the next match's pre-match
+                # window opens, so the long idle poll can never overshoot a kickoff
+                # and miss the start (and early goals). Full idle when nothing soon.
+                idle = IDLE_POLL_SECONDS
+                if minutes_to_kickoff is not None and minutes_to_kickoff > PREMATCH_WINDOW_MINUTES:
+                    secs_to_window = (minutes_to_kickoff - PREMATCH_WINDOW_MINUTES) * 60
+                    idle = min(IDLE_POLL_SECONDS, max(PREMATCH_POLL_SECONDS, secs_to_window))
+                await asyncio.sleep(idle)
             except Exception:
                 log.exception("match_watcher iteration failed; backing off 60s")
                 fail_streak += 1
