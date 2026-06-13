@@ -1,7 +1,7 @@
-# Hebrew/Israeli sources only — English sources were removed by request.
-# All are broad sport/football feeds (no Arsenal-only Hebrew feed exists), so
-# they are filtered to Arsenal by keyword anywhere in the article (title or
-# body). Cross-source duplicates are handled by dedup.py (now Hebrew-aware).
+# Mostly Hebrew/Israeli sources (English sources removed by request), plus one
+# English exception: Fabrizio Romano's column for transfers. All are broad
+# feeds filtered to Arsenal by keyword anywhere in the article (title or body).
+# Cross-source duplicates are handled by dedup.py (Hebrew-aware).
 # NOTE: this is news only. Live match alerts (goals, scores, pre-match,
 # half-time, post-match summary) come from the football-data API and are
 # unaffected by this list.
@@ -9,6 +9,11 @@ FEEDS = [
     {"source": "Ynet ספורט", "url": "https://www.ynet.co.il/Integration/StoryRss3.xml", "arsenal_only": False},
     {"source": "Walla כדורגל עולמי", "url": "https://rss.walla.co.il/feed/316", "arsenal_only": False},
     {"source": "Maariv ספורט", "url": "https://www.maariv.co.il/Rss/RssFeedsSport", "arsenal_only": False},
+    # English exception: Fabrizio Romano transfer column (via CaughtOffside,
+    # which aggregates/cites his reports — closest RSS-able proxy; his X/IG/
+    # TikTok have no usable feed). title_match_only keeps only items with
+    # "Arsenal" in the headline — "Arsenal transfers only", no passing mentions.
+    {"source": "פבריציו רומאנו", "url": "https://caughtoffside.com/tag/fabrizio-romano/feed/", "arsenal_only": False, "title_match_only": True},
 ]
 
 ARSENAL_KEYWORDS = [
