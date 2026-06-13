@@ -6,6 +6,7 @@ LLM here, so the user still reads everything in Hebrew. Translation failures
 fall back to the original text — a missed translation must never drop an alert.
 """
 import logging
+import re
 
 from ..hebrew_names import hebrewize
 from .client import LLMClient
@@ -43,7 +44,7 @@ _TRANSLIT_SYSTEM = (
     "English, no extra text."
 )
 
-_NUM_LINE = __import__("re").compile(r"^\s*(\d+)[.)]\s*(.+?)\s*$")
+_NUM_LINE = re.compile(r"^\s*(\d+)[.)]\s*(.+?)\s*$")
 
 
 async def transliterate_names(llm: LLMClient, names: list[str]) -> dict[str, str]:

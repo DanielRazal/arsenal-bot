@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 
 CommandReplyFn = Callable[[str], Awaitable[str]]
 
-_RLM = "‏"  # Right-to-Left Mark
+_RLM = "\u200f"  # Right-to-Left Mark
 
 
 def _rtl(text: str) -> str:

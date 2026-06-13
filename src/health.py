@@ -39,7 +39,9 @@ def start_health_server() -> None:
     """
     port = int(os.getenv("PORT", "10000"))
     try:
-        server = ThreadingHTTPServer(("0.0.0.0", port), _HealthHandler)
+        # Bind all interfaces: required so Render can reach the health check.
+        # The server only ever returns a static "alive" string — no data exposed.
+        server = ThreadingHTTPServer(("0.0.0.0", port), _HealthHandler)  # nosec B104
     except OSError:
         log.exception("Could not bind health server on port %s", port)
         return

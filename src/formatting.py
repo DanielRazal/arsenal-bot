@@ -126,7 +126,7 @@ def format_standings(rows: list[dict]) -> str:
 
     # LRM keeps the signed goal-difference reading "+44" not "44+". Per-line
     # RTL alignment is applied centrally in the Telegram notifier.
-    lrm = "‎"
+    lrm = "\u200e"
     lines = [f"🏆 *פרמייר ליג · מחזור {played}*", ""]
     for row in rows:
         rank = row.get("position", 0)

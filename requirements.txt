@@ -3,6 +3,6 @@ discord.py==2.4.0
 httpx==0.27.2
 feedparser==6.0.11
 APScheduler==3.10.4
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 groq==0.11.0
 google-generativeai==0.8.3

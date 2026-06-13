@@ -222,9 +222,11 @@ def get_articles_for_digest(since_iso: str) -> list[dict]:
 def mark_articles_in_digest(links: list[str]) -> None:
     if not links:
         return
+    # placeholders is only "?,?,…" (one per link); the link values themselves are
+    # passed as bound parameters below, so this is not an injection vector.
     placeholders = ",".join("?" * len(links))
     with get_conn() as conn:
         conn.execute(
-            f"UPDATE articles SET included_in_digest=1 WHERE link IN ({placeholders})",
+            f"UPDATE articles SET included_in_digest=1 WHERE link IN ({placeholders})",  # nosec B608
             links,
         )
