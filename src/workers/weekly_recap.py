@@ -47,8 +47,15 @@ async def _run_weekly(client: FootballDataClient, llm: LLMClient, fanout: Fanout
         link = item.get("link")
         if not link or link in seen_links:
             continue
-        full_text = f"{item.get('title', '')} {item.get('summary', '')}"
-        if not (item["arsenal_only"] or matches_arsenal(full_text)):
+        title = item.get("title", "")
+        full_text = f"{title} {item.get('summary', '')}"
+        if item["arsenal_only"]:
+            relevant = True
+        elif item.get("title_match_only"):
+            relevant = matches_arsenal(title)
+        else:
+            relevant = matches_arsenal(full_text)
+        if not relevant:
             continue
         if is_women_content(full_text) or is_mocking_content(full_text):
             continue

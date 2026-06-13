@@ -60,5 +60,10 @@ async def fetch_all(feeds: Iterable[dict]) -> list[dict]:
             log.warning("Feed %s errored: %s", feed_meta["source"], items)
             continue
         for item in items:
-            out.append({**item, "source": feed_meta["source"], "arsenal_only": feed_meta["arsenal_only"]})
+            out.append({
+                **item,
+                "source": feed_meta["source"],
+                "arsenal_only": feed_meta["arsenal_only"],
+                "title_match_only": feed_meta.get("title_match_only", False),
+            })
     return out

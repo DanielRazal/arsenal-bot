@@ -48,8 +48,16 @@ async def run(on_new_article, *, stop_event: asyncio.Event | None = None) -> Non
             mocking_skipped = 0
             dup_skipped = 0
             for item in items:
-                full_text = f"{item.get('title', '')} {item.get('summary', '')}"
-                is_relevant = item["arsenal_only"] or matches_arsenal(full_text)
+                title = item.get("title", "")
+                full_text = f"{title} {item.get('summary', '')}"
+                if item["arsenal_only"]:
+                    is_relevant = True
+                elif item.get("title_match_only"):
+                    # Broad feed (e.g. Israeli sport): require the keyword in the
+                    # title to avoid passing-mention false positives.
+                    is_relevant = matches_arsenal(title)
+                else:
+                    is_relevant = matches_arsenal(full_text)
                 if not is_relevant:
                     continue
                 if is_women_content(full_text):
