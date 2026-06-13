@@ -3,6 +3,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from .. import db
+from ..llm.client import LLMClient
+from ..llm.news_dedup import is_duplicate_story
 from ..sources.dedup import find_similar
 from ..sources.feeds import (
     FEEDS,
@@ -26,7 +28,7 @@ def _is_fresh(published_dt: datetime | None) -> bool:
     return datetime.now(timezone.utc) - published_dt <= FRESHNESS_WINDOW
 
 
-async def run(on_new_article, *, stop_event: asyncio.Event | None = None) -> None:
+async def run(on_new_article, *, stop_event: asyncio.Event | None = None, llm: LLMClient | None = None) -> None:
     log.info("news_poller started")
     # On a host with an ephemeral filesystem (free Render), the SQLite dedup
     # state is wiped on every restart/redeploy. Without priming, the first poll
@@ -92,6 +94,12 @@ async def run(on_new_article, *, stop_event: asyncio.Event | None = None) -> Non
                 if duplicate_of:
                     dup_skipped += 1
                     log.debug("Skipping near-duplicate of %r: %r", duplicate_of, title)
+                    continue
+                # Second pass: LLM catches paraphrased/cross-language duplicates
+                # that share too few words for the token check above.
+                if llm is not None and await is_duplicate_story(llm, title, sent_titles):
+                    dup_skipped += 1
+                    log.info("Semantic dedup skipped near-duplicate: %r", title)
                     continue
                 new_count += 1
                 await on_new_article(item)

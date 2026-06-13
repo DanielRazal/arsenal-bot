@@ -179,7 +179,7 @@ async def main() -> None:
         stop_event.wait(),
     ]
     if ENABLE_NEWS_POLLER:
-        tasks.insert(1, news_poller.run(on_new_article, stop_event=stop_event))
+        tasks.insert(1, news_poller.run(on_new_article, stop_event=stop_event, llm=llm))
     else:
         log.info("News poller disabled (handled by GitHub Actions)")
     try:
