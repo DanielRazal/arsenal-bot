@@ -6,13 +6,22 @@ import sys
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from . import db, formatting
-from .config import ARSENAL_TEAM_ID, ENABLE_MORNING_DIGEST, ENABLE_NEWS_POLLER, LOG_LEVEL, TIMEZONE
+from .health import start_health_server
+from .config import (
+    ARSENAL_TEAM_ID,
+    ENABLE_MORNING_DIGEST,
+    ENABLE_NEWS_POLLER,
+    ENABLE_STANDINGS_ALERT,
+    ENABLE_WEEKLY_RECAP,
+    LOG_LEVEL,
+    TIMEZONE,
+)
 from .sources.espn import fetch_arsenal_squad
 from .llm.client import LLMClient
 from .llm.match_summary import summarize_match
 from .notifiers.fanout import Fanout
 from .sources.football_data import FootballDataClient
-from .workers import match_watcher, morning_digest, news_poller, spurs_watcher
+from .workers import match_watcher, morning_digest, news_poller, spurs_watcher, standings_alert, weekly_recap
 
 
 def _configure_logging() -> None:
@@ -27,6 +36,7 @@ async def main() -> None:
     _configure_logging()
     log = logging.getLogger("arsenal-bot")
     db.init_db()
+    start_health_server()  # binds $PORT so Render accepts this as a Web Service
 
     fanout = Fanout.default()
     llm = LLMClient()
@@ -138,6 +148,14 @@ async def main() -> None:
         morning_digest.schedule(scheduler, llm, on_digest)
     else:
         log.info("Morning digest disabled (handled by GitHub Actions)")
+    if ENABLE_STANDINGS_ALERT:
+        standings_alert.schedule(scheduler, fd_client, fanout)
+    else:
+        log.info("Standings alert disabled (handled by GitHub Actions)")
+    if ENABLE_WEEKLY_RECAP:
+        weekly_recap.schedule(scheduler, fd_client, llm, fanout)
+    else:
+        log.info("Weekly recap disabled (handled by GitHub Actions)")
     scheduler.start()
 
     log.info("Arsenal bot starting…")

@@ -1,0 +1,46 @@
+# Render Blueprint — deploys the bot as a single always-on Web Service.
+#
+# Why a Web Service and not a Background Worker?
+#   Render's free tier only includes Web Services. A free Background Worker
+#   does not exist, so we run the long-running poller as a Web Service that
+#   also exposes a tiny health endpoint (see src/health.py). To stop the free
+#   service from spinning down after 15 min of inactivity, point a free uptime
+#   pinger (UptimeRobot / cron-job.org) at the service URL every ~10 minutes.
+#
+# Secrets (sync: false) are NOT stored here — set them in the Render dashboard
+# under the service's "Environment" tab, copying the values from your .env.
+services:
+  - type: web
+    name: arsenal-bot
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m src.main
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      # Run every worker here (the whole reason for moving off GitHub Actions).
+      - key: ENABLE_NEWS_POLLER
+        value: "true"
+      - key: ENABLE_MORNING_DIGEST
+        value: "true"
+      - key: ENABLE_STANDINGS_ALERT
+        value: "true"
+      - key: ENABLE_WEEKLY_RECAP
+        value: "true"
+      - key: TIMEZONE
+        value: "Asia/Jerusalem"
+      # --- Secrets: paste these in the dashboard, not in git ---
+      - key: FOOTBALL_DATA_API_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: DISCORD_WEBHOOK_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

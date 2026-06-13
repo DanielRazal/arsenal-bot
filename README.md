@@ -58,51 +58,28 @@ INFO src.workers.morning_digest | morning_digest scheduled daily at 08:00 Asia/J
 
 ### 3. Deploy 24/7
 
-See [deploy/setup_oracle.md](deploy/setup_oracle.md) for step-by-step Oracle Cloud Always Free instructions.
+**Recommended — Render (free):** see [deploy/setup_render.md](deploy/setup_render.md). Runs the entire bot (incl. real-time goals) as one always-on Web Service via `render.yaml`. This is the fix for GitHub Actions being too slow/delayed for live events.
+
+Other option: [deploy/setup_oracle.md](deploy/setup_oracle.md) (Oracle Cloud Always Free, systemd).
 
 ---
 
-## Hybrid mode with GitHub Actions
+## Where it runs
 
-When the PC is asleep, scheduled work can run for free in GitHub Actions:
+Everything runs in **one always-on process** (`python -m src.main`) — live goals,
+red cards, pre-match, half-time, post-match AI summary, Spurs alerts, news
+polling, morning digest, standings alert, weekly recap, and the Telegram
+commands. Deploy it on Render (free) per [deploy/setup_render.md](deploy/setup_render.md).
 
-| Workload | Where it runs |
-|----------|----------------|
-| ⚽ Live match alerts, half-time, red cards, post-match summary | PC (always-on host) |
-| 🤖 `/next` Telegram command | PC |
-| 📰 News polling (every 15 min) | GitHub Actions |
-| ☕ Morning digest (daily 08:00 IL) | GitHub Actions |
+All `ENABLE_*` toggles in `.env` default to `true`; flip one to `false` only if
+you want to hand that single job back to a GitHub Actions workflow instead.
 
-### One-time setup
+### GitHub Actions (legacy)
 
-1. **Add GitHub repo secrets** at <https://github.com/DanielRazal/arsenal-bot/settings/secrets/actions>. Click "New repository secret" for each:
-
-   | Secret name | Paste the value from your local `.env` |
-   |-------------|------------------------------------------|
-   | `FOOTBALL_DATA_API_KEY` | `FOOTBALL_DATA_API_KEY` |
-   | `TELEGRAM_BOT_TOKEN` | `TELEGRAM_BOT_TOKEN` |
-   | `TELEGRAM_CHAT_ID` | `TELEGRAM_CHAT_ID` |
-   | `DISCORD_WEBHOOK_URL` | `DISCORD_WEBHOOK_URL` |
-   | `GROQ_API_KEY` | `GROQ_API_KEY` |
-
-2. **Disable the duplicated workers on the PC** by adding to your `.env`:
-   ```
-   ENABLE_NEWS_POLLER=false
-   ENABLE_MORNING_DIGEST=false
-   ```
-   then restart `python -m src.main`. The log will confirm:
-   ```
-   INFO arsenal-bot | News poller disabled (handled by GitHub Actions)
-   INFO arsenal-bot | Morning digest disabled (handled by GitHub Actions)
-   ```
-
-3. **Verify the workflows** at <https://github.com/DanielRazal/arsenal-bot/actions>. After the next 15-minute boundary you'll see a "News Poll" run; the "Morning Digest" run appears once per day around 05:30 UTC.
-
-### Manually trigger a run
-
-Both workflows expose `workflow_dispatch`, so you can fire either of them on demand:
-
-1. Go to the Actions tab → pick the workflow → click "Run workflow" (top-right).
+The repo still contains the old per-job workflows under `.github/workflows/`,
+but they are renamed to `*.yml.disabled` so they don't fire — the always-on
+process replaces them. The matching one-shot scripts in `scripts/` remain as the
+entry points if you ever re-enable a workflow.
 
 ---
 
@@ -113,11 +90,15 @@ src/
 ├── main.py                  entry point — wires workers + notifiers
 ├── config.py                .env loader
 ├── db.py                    SQLite schema + dedup helpers
+├── health.py                tiny HTTP health endpoint (for Render Web Service)
 ├── formatting.py            message templates (Hebrew)
 ├── workers/
-│   ├── match_watcher.py     adaptive polling (idle → prematch → live)
+│   ├── match_watcher.py     adaptive polling (idle → prematch → live) + startup priming
+│   ├── spurs_watcher.py     Spurs-loss schadenfreude
 │   ├── news_poller.py       RSS every 15 min
-│   └── morning_digest.py    APScheduler cron job
+│   ├── morning_digest.py    APScheduler cron job (daily 08:00)
+│   ├── standings_alert.py   APScheduler cron job (every 6h)
+│   └── weekly_recap.py      APScheduler cron job (Friday 19:00)
 ├── sources/
 │   ├── football_data.py     football-data.org client
 │   ├── rss.py               feedparser wrapper

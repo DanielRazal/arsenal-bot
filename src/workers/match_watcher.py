@@ -47,12 +47,21 @@ async def _handle_finished_match(match: dict, on_finished) -> None:
 RED_CARD_TYPES = {"RED_CARD", "YELLOW_RED_CARD", "RED"}
 
 
+def _goal_event_id(goal: dict) -> str:
+    return f"goal-{goal.get('minute')}-{(goal.get('scorer') or {}).get('id', '?')}"
+
+
+def _card_event_id(booking: dict) -> str:
+    player_id = (booking.get("player") or {}).get("id", "?")
+    return f"red-{booking.get('minute')}-{player_id}"
+
+
 async def _handle_live_match(match: dict, on_event) -> None:
     db.upsert_match(match)
     raw = match.get("raw", {})
     goals = raw.get("goals", []) or []
     for goal in goals:
-        event_id = f"goal-{goal.get('minute')}-{(goal.get('scorer') or {}).get('id', '?')}"
+        event_id = _goal_event_id(goal)
         if db.event_already_sent(match["id"], event_id):
             continue
         scorer_name = (goal.get("scorer") or {}).get("name", "Unknown")
@@ -73,8 +82,7 @@ async def _handle_live_match(match: dict, on_event) -> None:
         card_type = (booking.get("card") or "").upper()
         if card_type not in RED_CARD_TYPES:
             continue
-        player_id = (booking.get("player") or {}).get("id", "?")
-        event_id = f"red-{booking.get('minute')}-{player_id}"
+        event_id = _card_event_id(booking)
         if db.event_already_sent(match["id"], event_id):
             continue
         player_name = (booking.get("player") or {}).get("name", "Unknown")
@@ -113,6 +121,51 @@ async def _handle_halftime(match: dict, on_halftime) -> None:
     db.mark_halftime_sent(match["id"])
 
 
+async def prime_state(client: FootballDataClient) -> None:
+    """Sync the DB to current reality on startup WITHOUT notifying.
+
+    On a host with an ephemeral filesystem (e.g. a free Render Web Service)
+    the SQLite state is wiped on every restart/deploy. Without this, a restart
+    in the middle of a live match would re-announce every goal/card already on
+    the scoreboard, and re-send the post-match summary. Here we record the
+    current events as "already sent" so only genuinely new events fire after
+    boot. The only cost is a real-time event landing in the ~1-minute restart
+    window, which is rare.
+
+    No-op (and silent) when the DB already knows about these events — i.e. on a
+    host with persistent state, priming simply re-confirms what's there.
+    """
+    try:
+        live = await _check_live_match(client)
+        if live:
+            db.upsert_match(live)
+            raw = live.get("raw", {})
+            for goal in raw.get("goals", []) or []:
+                db.mark_event_sent(live["id"], _goal_event_id(goal))
+            for booking in raw.get("bookings", []) or []:
+                if (booking.get("card") or "").upper() in RED_CARD_TYPES:
+                    db.mark_event_sent(live["id"], _card_event_id(booking))
+            db.mark_prematch_sent(live["id"])
+            if live["status"] in ("PAUSED", "FINISHED"):
+                db.mark_halftime_sent(live["id"])
+            log.info("Primed live match %s — existing events suppressed", live["id"])
+
+        # Suppress re-summarizing a game that already finished before boot.
+        recent = await client.get_team_matches(status="FINISHED")
+        if recent:
+            recent.sort(key=lambda m: m["utc_date"], reverse=True)
+            latest = recent[0]
+            finished_at = _parse_iso(latest["utc_date"])
+            if datetime.now(timezone.utc) - finished_at < timedelta(hours=4):
+                db.upsert_match(latest)
+                db.mark_summary_sent(latest["id"])
+                db.mark_prematch_sent(latest["id"])
+                db.mark_halftime_sent(latest["id"])
+                log.info("Primed recently-finished match %s — summary suppressed", latest["id"])
+    except Exception:
+        log.exception("prime_state failed; continuing without priming")
+
+
 async def run(
     on_event,
     on_prematch,
@@ -123,6 +176,7 @@ async def run(
 ) -> None:
     client = FootballDataClient()
     log.info("match_watcher started")
+    await prime_state(client)
     try:
         while not (stop_event and stop_event.is_set()):
             try:

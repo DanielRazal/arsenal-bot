@@ -42,5 +42,7 @@ def _flag(name: str, default: bool) -> bool:
 # Set these to false when delegating to GitHub Actions
 ENABLE_NEWS_POLLER = _flag("ENABLE_NEWS_POLLER", True)
 ENABLE_MORNING_DIGEST = _flag("ENABLE_MORNING_DIGEST", True)
+ENABLE_STANDINGS_ALERT = _flag("ENABLE_STANDINGS_ALERT", True)
+ENABLE_WEEKLY_RECAP = _flag("ENABLE_WEEKLY_RECAP", True)
 
 DB_PATH = ROOT_DIR / "data" / "state.db"
