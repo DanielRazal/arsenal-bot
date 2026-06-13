@@ -113,3 +113,95 @@ def hebrewize(text: str) -> str:
             lowered = result.lower()
             idx = pos + len(he)
     return result
+
+
+# --- Team & competition name localization ---------------------------------
+# football-data returns full names in matches ("Arsenal FC") and shortNames in
+# standings ("Arsenal", "Man City"). We normalize by dropping club-type tokens
+# and punctuation, then look up. Unknown teams fall back to the original
+# (English) — the opponent long tail can't all be covered.
+import re as _re
+
+_CLUB_TOKENS = {"fc", "afc", "cf", "sc", "ac", "as", "ssc", "ud", "cd", "club", "de"}
+_TEAM_TOKEN_RE = _re.compile(r"[a-zà-ÿ']+")
+
+
+def _norm_team(name: str) -> str:
+    toks = [t for t in _TEAM_TOKEN_RE.findall(name.lower()) if t not in _CLUB_TOKENS]
+    return " ".join(toks)
+
+
+# Keys are normalized (lowercase, club tokens dropped). Multiple aliases per
+# club cover both the full match name and the standings shortName.
+TEAMS_EN_HE: dict[str, str] = {
+    # Premier League
+    "arsenal": "ארסנל",
+    "aston villa": "אסטון וילה",
+    "bournemouth": "בורנמות'",
+    "brentford": "ברנטפורד",
+    "brighton hove albion": "ברייטון", "brighton": "ברייטון",
+    "burnley": "ברנלי",
+    "chelsea": "צ'לסי",
+    "crystal palace": "קריסטל פאלאס",
+    "everton": "אוורטון",
+    "fulham": "פולהאם",
+    "ipswich town": "איפסוויץ'", "ipswich": "איפסוויץ'",
+    "leeds united": "לידס", "leeds": "לידס",
+    "leicester city": "לסטר", "leicester": "לסטר",
+    "liverpool": "ליברפול",
+    "manchester city": "מנצ'סטר סיטי", "man city": "מנצ'סטר סיטי",
+    "manchester united": "מנצ'סטר יונייטד", "man united": "מנצ'סטר יונייטד",
+    "newcastle united": "ניוקאסל", "newcastle": "ניוקאסל",
+    "nottingham forest": "נוטינגהאם פורסט", "nott'm forest": "נוטינגהאם פורסט", "nottingham": "נוטינגהאם פורסט",
+    "southampton": "סאות'המפטון",
+    "sunderland": "סנדרלנד",
+    "tottenham hotspur": "טוטנהאם", "tottenham": "טוטנהאם", "spurs": "טוטנהאם",
+    "west ham united": "וסטהאם", "west ham": "וסטהאם",
+    "wolverhampton wanderers": "וולבס", "wolverhampton": "וולבס", "wolves": "וולבס",
+    # Frequent European opponents
+    "real madrid": "ריאל מדריד",
+    "barcelona": "ברצלונה",
+    "atletico madrid": "אתלטיקו מדריד", "atlético de madrid": "אתלטיקו מדריד", "atletico de madrid": "אתלטיקו מדריד",
+    "bayern münchen": "באיירן מינכן", "bayern munchen": "באיירן מינכן", "bayern munich": "באיירן מינכן",
+    "borussia dortmund": "דורטמונד", "dortmund": "דורטמונד",
+    "paris saint germain": "פ.ס.ז'", "psg": "פ.ס.ז'",
+    "internazionale milano": "אינטר", "inter": "אינטר",
+    "milan": "מילאן",
+    "juventus": "יובנטוס",
+    "napoli": "נאפולי",
+    "porto": "פורטו",
+    "benfica": "בנפיקה",
+    "ajax": "אייאקס",
+    "bayer leverkusen": "באייר לברקוזן", "leverkusen": "לברקוזן",
+    "sporting cp": "ספורטינג ליסבון", "sporting": "ספורטינג ליסבון",
+}
+
+COMPETITIONS_EN_HE: dict[str, str] = {
+    "premier league": "פרמייר ליג",
+    "uefa champions league": "ליגת האלופות",
+    "uefa europa league": "ליגה האירופית",
+    "uefa europa conference league": "ליגת הקונפרנס",
+    "uefa conference league": "ליגת הקונפרנס",
+    "fa cup": "גביע ה-FA",
+    "efl cup": "גביע הליגה",
+    "football league cup": "גביע הליגה",
+    "carabao cup": "גביע הליגה",
+    "fa community shield": "מגן הקומיוניטי",
+    "community shield": "מגן הקומיוניטי",
+    "fifa club world cup": "גביע העולם למועדונים",
+    "club friendlies": "משחקי ידידות",
+}
+
+
+def hebrewize_team(name: str) -> str:
+    """Localize a club name to Hebrew; unknown clubs return unchanged."""
+    if not name:
+        return name
+    return TEAMS_EN_HE.get(_norm_team(name), name)
+
+
+def hebrewize_competition(name: str) -> str:
+    """Localize a competition name to Hebrew; unknown ones return unchanged."""
+    if not name:
+        return name
+    return COMPETITIONS_EN_HE.get(name.strip().lower(), name)

@@ -2,7 +2,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from .config import ARSENAL_TEAM_ID, TIMEZONE
-from .hebrew_names import hebrewize
+from .hebrew_names import hebrewize, hebrewize_team, hebrewize_competition
 
 
 def _local_time(utc_iso: str) -> str:
@@ -12,13 +12,13 @@ def _local_time(utc_iso: str) -> str:
 
 def format_prematch(match: dict) -> str:
     kickoff = _local_time(match["utc_date"])
-    competition = match.get("competition") or "משחק"
-    home = match["home_team"]
-    away = match["away_team"]
+    competition = hebrewize_competition(match.get("competition") or "משחק")
+    home = hebrewize_team(match["home_team"])
+    away = hebrewize_team(match["away_team"])
     return (
         f"⚽ *משחק בעוד 30 דקות!*\n"
         f"🏆 {competition}\n"
-        f"🆚 {home} vs {away}\n"
+        f"🆚 {home} נגד {away}\n"
         f"🕒 {kickoff}\n"
         f"בוא נראה אותם 💪"
     )
@@ -28,11 +28,11 @@ def format_goal(event: dict) -> str:
     match = event["match"]
     minute = event.get("minute", "?")
     scorer = hebrewize(event.get("scorer", "Unknown"))
-    team = event.get("team", "")
+    team = hebrewize_team(event.get("team", ""))
     is_arsenal = event.get("is_arsenal", False)
     score = f"{match.get('score_home') or 0}–{match.get('score_away') or 0}"
-    home = match["home_team"]
-    away = match["away_team"]
+    home = hebrewize_team(match["home_team"])
+    away = hebrewize_team(match["away_team"])
     emoji = "🔴⚪ *גוווולllll!!!*" if is_arsenal else "😡 שער ליריבים"
     return (
         f"{emoji}\n"
@@ -45,7 +45,7 @@ def format_red_card(event: dict) -> str:
     match = event["match"]
     minute = event.get("minute", "?")
     player = hebrewize(event.get("player", "Unknown"))
-    team = event.get("team", "")
+    team = hebrewize_team(event.get("team", ""))
     is_arsenal = event.get("is_arsenal", False)
     second_yellow = event.get("second_yellow", False)
     card_desc = "כרטיס צהוב שני" if second_yellow else "כרטיס אדום ישיר"
@@ -54,14 +54,14 @@ def format_red_card(event: dict) -> str:
     else:
         verdict = f"🟥 *הורחק יריב!* 🎉\n⏱ דקה {minute}' — {player} ({team})\n{card_desc} — עכשיו אנחנו ביתרון מספרי"
     score = f"{match.get('score_home') or 0}–{match.get('score_away') or 0}"
-    home = match["home_team"]
-    away = match["away_team"]
+    home = hebrewize_team(match["home_team"])
+    away = hebrewize_team(match["away_team"])
     return f"{verdict}\n📊 {home} {score} {away}"
 
 
 def format_halftime(match: dict) -> str:
-    home = match["home_team"]
-    away = match["away_team"]
+    home = hebrewize_team(match["home_team"])
+    away = hebrewize_team(match["away_team"])
     score_home = match.get("score_home") or 0
     score_away = match.get("score_away") or 0
     arsenal_home = match.get("home_team_id") == ARSENAL_TEAM_ID
@@ -81,8 +81,8 @@ def format_halftime(match: dict) -> str:
 
 
 def format_match_finished(match: dict, summary_text: str) -> str:
-    home = match["home_team"]
-    away = match["away_team"]
+    home = hebrewize_team(match["home_team"])
+    away = hebrewize_team(match["away_team"])
     score = f"{match.get('score_home') or 0}–{match.get('score_away') or 0}"
     arsenal_home = match.get("home_team_id") == ARSENAL_TEAM_ID
     arsenal_score = match.get("score_home") if arsenal_home else match.get("score_away")
@@ -108,11 +108,11 @@ def format_next_matches(matches: list[dict]) -> str:
     lines = ["📅 *המשחקים הבאים של ארסנל*", ""]
     for i, match in enumerate(matches, 1):
         kickoff = _local_time(match["utc_date"])
-        competition = match.get("competition") or ""
-        home = match["home_team"]
-        away = match["away_team"]
+        competition = hebrewize_competition(match.get("competition") or "")
+        home = hebrewize_team(match["home_team"])
+        away = hebrewize_team(match["away_team"])
         venue_indicator = "🏠" if match.get("home_team_id") == ARSENAL_TEAM_ID else "✈️"
-        lines.append(f"{i}. {venue_indicator} {home} vs {away}")
+        lines.append(f"{i}. {venue_indicator} {home} נגד {away}")
         lines.append(f"   🕒 {kickoff} · 🏆 {competition}")
         lines.append("")
     return "\n".join(lines).rstrip()
@@ -124,18 +124,18 @@ def format_standings(rows: list[dict]) -> str:
     arsenal_row = next((r for r in rows if r.get("team_id") == ARSENAL_TEAM_ID), None)
     played = rows[0].get("played", 0) if rows else 0
 
-    lines = [f"🏆 *Premier League · מחזור {played}*", ""]
+    lines = [f"🏆 *פרמייר ליג · מחזור {played}*", ""]
     for row in rows:
         rank = row.get("position", 0)
-        name = row.get("team_name", "")
+        name = hebrewize_team(row.get("team_name", ""))
         points = row.get("points", 0)
         gd = row.get("goal_difference", 0)
         gd_str = f"+{gd}" if (gd or 0) > 0 else str(gd)
         is_arsenal = row.get("team_id") == ARSENAL_TEAM_ID
         if is_arsenal:
-            lines.append(f"⭐ *{rank}. {name}* — *{points} pts* ({gd_str})")
+            lines.append(f"⭐ *{rank}. {name}* — *{points} נק'* ({gd_str})")
         else:
-            lines.append(f"   {rank}. {name} — {points} pts ({gd_str})")
+            lines.append(f"   {rank}. {name} — {points} נק' ({gd_str})")
         if rank == 4 or rank == 17:
             lines.append("   ━━━━━━━━━━━━━━━━━━")
 
@@ -149,19 +149,19 @@ def format_standings(rows: list[dict]) -> str:
         leader = rows[0]
         gap = (leader.get("points") or 0) - (arsenal_row.get("points") or 0)
         if gap == 0:
-            lines.append(f"_שווים בנקודות עם {leader.get('team_name')}_ 🤝")
+            lines.append(f"_שווים בנקודות עם {hebrewize_team(leader.get('team_name') or '')}_ 🤝")
         else:
-            lines.append(f"_פער של {gap} נקודות מ-{leader.get('team_name')}_")
+            lines.append(f"_פער של {gap} נקודות מ-{hebrewize_team(leader.get('team_name') or '')}_")
     return "\n".join(lines)
 
 
 def format_spurs_loss(match: dict) -> str:
-    home = match["home_team"]
-    away = match["away_team"]
+    home = hebrewize_team(match["home_team"])
+    away = hebrewize_team(match["away_team"])
     score = f"{match.get('score_home') or 0}–{match.get('score_away') or 0}"
-    competition = match.get("competition") or "משחק"
+    competition = hebrewize_competition(match.get("competition") or "משחק")
     return (
-        f"🎉 *Spurs lost again!* 🍿\n"
+        f"🎉 *טוטנהאם הפסידו שוב!* 🍿\n"
         f"🏆 {competition}\n"
         f"📊 {home} {score} {away}\n"
         f"_עוד יום טוב להיות גאנר._"
@@ -221,7 +221,7 @@ def format_squad(players: list[dict]) -> str:
         if pos in grouped:
             grouped[pos].append(player)
     total = sum(len(v) for v in grouped.values())
-    lines = [f"👥 *הרכב ארסנל FC* ({total} שחקנים)"]
+    lines = [f"👥 *הרכב ארסנל* ({total} שחקנים)"]
     for pos in _POSITION_ORDER:
         group = grouped[pos]
         if not group:
@@ -230,7 +230,7 @@ def format_squad(players: list[dict]) -> str:
         label = _POSITION_LABEL[pos]
         lines.append(f"\n{emoji} *{label}*")
         for p in sorted(group, key=lambda x: x.get("name", "")):
-            name = p["name"]
+            name = hebrewize(p["name"])
             age = f" · {p['age']}" if p.get("age") else ""
             lines.append(f"• {name}{age}")
     lines.append(f"\n_{total} שחקנים · נתונים מ-ESPN_")
@@ -267,7 +267,7 @@ def format_standings_alert(event: str, arsenal_row: dict, prev_position: int | N
 
     return (
         f"{headline}\n"
-        f"🏆 Premier League\n"
+        f"🏆 פרמייר ליג\n"
         f"📊 {pts} נקודות | הפרש שערים: {gd_str}"
     )
 
