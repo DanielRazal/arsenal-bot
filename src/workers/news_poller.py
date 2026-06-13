@@ -28,6 +28,13 @@ def _is_fresh(published_dt: datetime | None) -> bool:
 
 async def run(on_new_article, *, stop_event: asyncio.Event | None = None) -> None:
     log.info("news_poller started")
+    # On a host with an ephemeral filesystem (free Render), the SQLite dedup
+    # state is wiped on every restart/redeploy. Without priming, the first poll
+    # after a restart re-announces every article published in the last 24h that
+    # was already sent before the restart. So on the FIRST iteration we seed the
+    # current feed contents silently and send nothing; only articles that appear
+    # in later iterations (i.e. after startup) are pushed.
+    first_run = True
     while not (stop_event and stop_event.is_set()):
         try:
             items = await fetch_all(FEEDS)
@@ -60,6 +67,12 @@ async def run(on_new_article, *, stop_event: asyncio.Event | None = None) -> Non
                 )
                 if not inserted:
                     continue
+                if first_run:
+                    # Pre-existing article: record it as already-sent so it is
+                    # never announced, and so it counts toward cross-source dedup.
+                    db.mark_article_sent(item["link"])
+                    seeded_count += 1
+                    continue
                 if not _is_fresh(item.get("published_dt")):
                     seeded_count += 1
                     continue
@@ -79,7 +92,10 @@ async def run(on_new_article, *, stop_event: asyncio.Event | None = None) -> Non
             if new_count:
                 log.info("news_poller: %d new article(s) sent", new_count)
             if seeded_count:
-                log.info("news_poller: %d older article(s) seeded silently", seeded_count)
+                if first_run:
+                    log.info("news_poller: primed %d existing article(s) silently on startup", seeded_count)
+                else:
+                    log.info("news_poller: %d older article(s) seeded silently", seeded_count)
             if clickbait_count:
                 log.info("news_poller: %d clickbait article(s) deferred to digest", clickbait_count)
             if women_skipped:
@@ -88,6 +104,9 @@ async def run(on_new_article, *, stop_event: asyncio.Event | None = None) -> Non
                 log.info("news_poller: %d mocking/banter article(s) filtered out", mocking_skipped)
             if dup_skipped:
                 log.info("news_poller: %d cross-source duplicate(s) skipped", dup_skipped)
+            # Only flip after a fully successful pass, so a failed first fetch
+            # retries the silent priming instead of going live with an empty DB.
+            first_run = False
         except Exception:
             log.exception("news_poller iteration failed; backing off")
         await asyncio.sleep(POLL_SECONDS)
