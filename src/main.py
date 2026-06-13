@@ -174,12 +174,12 @@ async def main() -> None:
     log.info("Arsenal bot starting…")
     await fanout.start()
     tasks = [
-        match_watcher.run(on_event, on_prematch, on_finished, on_halftime, stop_event=stop_event),
+        match_watcher.run(on_event, on_prematch, on_finished, on_halftime, stop_event=stop_event, on_alert=fanout.send_admin),
         spurs_watcher.run(on_spurs_loss, stop_event=stop_event),
         stop_event.wait(),
     ]
     if ENABLE_NEWS_POLLER:
-        tasks.insert(1, news_poller.run(on_new_article, stop_event=stop_event, llm=llm))
+        tasks.insert(1, news_poller.run(on_new_article, stop_event=stop_event, llm=llm, on_alert=fanout.send_admin))
     else:
         log.info("News poller disabled (handled by GitHub Actions)")
     try:

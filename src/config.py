@@ -20,6 +20,9 @@ def _require(key: str) -> str:
 FOOTBALL_DATA_API_KEY = _require("FOOTBALL_DATA_API_KEY")
 TELEGRAM_BOT_TOKEN = _require("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = _require("TELEGRAM_CHAT_ID")
+# Where ops/health alerts go (feed died, API down). Defaults to the main chat;
+# set a private chat id to keep system messages off the public channel.
+ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID") or TELEGRAM_CHAT_ID
 DISCORD_WEBHOOK_URL = _require("DISCORD_WEBHOOK_URL")
 GROQ_API_KEY = _require("GROQ_API_KEY")
 

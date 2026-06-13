@@ -6,7 +6,7 @@ from telegram.constants import ParseMode
 from telegram.error import TelegramError
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
-from ..config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+from ..config import ADMIN_CHAT_ID, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 
 log = logging.getLogger(__name__)
 
@@ -42,6 +42,13 @@ class TelegramNotifier:
             )
         except TelegramError:
             log.exception("Telegram send failed")
+
+    async def send_admin(self, text: str) -> None:
+        """Send an ops/health alert to the admin chat (not the public channel)."""
+        try:
+            await self._bot.send_message(chat_id=ADMIN_CHAT_ID, text=text)
+        except TelegramError:
+            log.exception("Telegram admin alert failed")
 
     async def start_polling(self) -> None:
         """Start listening for slash-commands. Call once at startup."""

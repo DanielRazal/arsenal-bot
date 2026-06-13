@@ -37,6 +37,13 @@ class Fanout:
             return_exceptions=True,
         )
 
+    async def send_admin(self, text: str) -> None:
+        """Ops/health alert — Telegram admin chat only, no public fan-out."""
+        if self._telegram is not None:
+            await self._telegram.send_admin(text)
+        else:
+            log.warning("No Telegram notifier for admin alert: %s", text)
+
     async def close(self) -> None:
         await asyncio.gather(
             *(n.close() for n in self._notifiers),

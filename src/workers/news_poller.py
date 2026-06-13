@@ -28,8 +28,19 @@ def _is_fresh(published_dt: datetime | None) -> bool:
     return datetime.now(timezone.utc) - published_dt <= FRESHNESS_WINDOW
 
 
-async def run(on_new_article, *, stop_event: asyncio.Event | None = None, llm: LLMClient | None = None) -> None:
+DEAD_FEED_POLLS = 4  # consecutive empty polls (~1h at 15-min cadence) before alerting
+
+
+async def run(
+    on_new_article,
+    *,
+    stop_event: asyncio.Event | None = None,
+    llm: LLMClient | None = None,
+    on_alert=None,
+) -> None:
     log.info("news_poller started")
+    zero_streak: dict[str, int] = {}
+    dead_alerted: set[str] = set()
     # On a host with an ephemeral filesystem (free Render), the SQLite dedup
     # state is wiped on every restart/redeploy. Without priming, the first poll
     # after a restart re-announces every article published in the last 24h that
@@ -40,6 +51,23 @@ async def run(on_new_article, *, stop_event: asyncio.Event | None = None, llm: L
     while not (stop_event and stop_event.is_set()):
         try:
             items = await fetch_all(FEEDS)
+            # Dead-feed watch: a feed that returns 0 items for several polls in a
+            # row is broken (e.g. blocked IP). Alert once, and once on recovery.
+            if on_alert is not None:
+                per_source = {f["source"]: 0 for f in FEEDS}
+                for it in items:
+                    per_source[it["source"]] = per_source.get(it["source"], 0) + 1
+                for src, n in per_source.items():
+                    if n == 0:
+                        zero_streak[src] = zero_streak.get(src, 0) + 1
+                        if zero_streak[src] == DEAD_FEED_POLLS and src not in dead_alerted:
+                            dead_alerted.add(src)
+                            await on_alert(f"⚠️ מקור החדשות \"{src}\" לא מחזיר פריטים כבר זמן מה — ייתכן שהוא נחסם או נפל.")
+                    else:
+                        if src in dead_alerted:
+                            await on_alert(f"✅ מקור החדשות \"{src}\" חזר לעבוד.")
+                        zero_streak[src] = 0
+                        dead_alerted.discard(src)
             # Pre-load recently sent titles so we can dedup cross-source within iteration too.
             recent_cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
             sent_titles = db.recent_sent_titles(recent_cutoff)

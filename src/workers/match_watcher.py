@@ -166,6 +166,9 @@ async def prime_state(client: FootballDataClient) -> None:
         log.exception("prime_state failed; continuing without priming")
 
 
+FAIL_STREAK_ALERT = 5  # consecutive failed iterations (~5 min) before alerting
+
+
 async def run(
     on_event,
     on_prematch,
@@ -173,14 +176,22 @@ async def run(
     on_halftime,
     *,
     stop_event: asyncio.Event | None = None,
+    on_alert=None,
 ) -> None:
     client = FootballDataClient()
     log.info("match_watcher started")
     await prime_state(client)
+    fail_streak = 0
+    alerted_down = False
     try:
         while not (stop_event and stop_event.is_set()):
             try:
                 live = await _check_live_match(client)
+                # The API responded — clear any failure streak / down-alert.
+                if alerted_down and on_alert is not None:
+                    await on_alert("✅ ניטור המשחקים חזר לעבוד (football-data שב לתקינות).")
+                alerted_down = False
+                fail_streak = 0
                 if live:
                     await _handle_live_match(live, on_event)
                     if live["status"] == "PAUSED":
@@ -211,6 +222,10 @@ async def run(
                 await asyncio.sleep(IDLE_POLL_SECONDS)
             except Exception:
                 log.exception("match_watcher iteration failed; backing off 60s")
+                fail_streak += 1
+                if fail_streak >= FAIL_STREAK_ALERT and not alerted_down and on_alert is not None:
+                    alerted_down = True
+                    await on_alert("⚠️ ניטור המשחקים נכשל שוב ושוב — ייתכן ש-football-data למטה. ייתכן פספוס התראות חיות.")
                 await asyncio.sleep(60)
     finally:
         await client.close()
