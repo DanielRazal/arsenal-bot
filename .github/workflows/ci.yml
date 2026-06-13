@@ -44,3 +44,21 @@ jobs:
           else
             echo "RENDER_DEPLOY_HOOK_URL not set — skipping (Render auto-deploy still active)."
           fi
+
+  # Security scans on every push/PR. Runs in parallel with tests. A red result
+  # is a visibility signal (Render auto-deploy isn't gated on it unless you add
+  # `needs: [test, security]` to the deploy step + enable the deploy hook).
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install scan tools
+        run: pip install pip-audit bandit
+      - name: Dependency audit (pip-audit)
+        run: pip-audit -r requirements.txt
+      - name: Static security scan (bandit)
+        run: bandit -r src scripts -ll
