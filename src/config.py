@@ -28,6 +28,12 @@ GROQ_API_KEY = _require("GROQ_API_KEY")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
+# Durable state: when both are set, the bot stores state in Turso (cloud SQLite)
+# instead of the local file, so dedup/sent flags survive Render restarts/deploys.
+# When unset, falls back to the local SQLite file (current behavior).
+TURSO_DATABASE_URL = os.getenv("TURSO_DATABASE_URL", "")
+TURSO_AUTH_TOKEN = os.getenv("TURSO_AUTH_TOKEN", "")
+
 ARSENAL_TEAM_ID = int(os.getenv("ARSENAL_TEAM_ID", "57"))
 SPURS_TEAM_ID = int(os.getenv("SPURS_TEAM_ID", "73"))
 TIMEZONE = os.getenv("TIMEZONE", "Asia/Jerusalem")

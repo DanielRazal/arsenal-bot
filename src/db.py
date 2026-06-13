@@ -1,9 +1,33 @@
+import logging
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .config import DB_PATH
+from .config import DB_PATH, TURSO_AUTH_TOKEN, TURSO_DATABASE_URL
+
+log = logging.getLogger(__name__)
+_turso_warned = False
+
+
+def _open(path: Path = DB_PATH):
+    """Open a DB connection: Turso (durable) when configured, else local SQLite.
+
+    Any failure to reach Turso falls back to the local file so the bot keeps
+    running — worst case it's non-durable (today's behavior), never broken.
+    """
+    global _turso_warned
+    if TURSO_DATABASE_URL and TURSO_AUTH_TOKEN:
+        try:
+            from .turso import TursoConnection
+            return TursoConnection(TURSO_DATABASE_URL, TURSO_AUTH_TOKEN)
+        except Exception:
+            if not _turso_warned:
+                log.exception("Turso unavailable — falling back to local SQLite")
+                _turso_warned = True
+    conn = sqlite3.connect(path)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS matches (
@@ -47,9 +71,13 @@ CREATE INDEX IF NOT EXISTS idx_matches_status ON matches(status);
 
 def init_db(path: Path = DB_PATH) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(path) as conn:
+    conn = _open(path)
+    try:
         conn.executescript(SCHEMA)
         _migrate(conn)
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def _migrate(conn: sqlite3.Connection) -> None:
@@ -61,8 +89,7 @@ def _migrate(conn: sqlite3.Connection) -> None:
 
 @contextmanager
 def get_conn(path: Path = DB_PATH):
-    conn = sqlite3.connect(path)
-    conn.row_factory = sqlite3.Row
+    conn = _open(path)
     try:
         yield conn
         conn.commit()
