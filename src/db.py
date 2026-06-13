@@ -124,6 +124,14 @@ def upsert_match(match: dict) -> None:
         )
 
 
+def has_articles() -> bool:
+    """True if the articles table already holds rows — i.e. state is populated
+    (durable Turso, or a warm local DB). Used to decide whether news_poller
+    should silently prime on startup (only needed when the DB is empty)."""
+    with get_conn() as conn:
+        return conn.execute("SELECT 1 FROM articles LIMIT 1").fetchone() is not None
+
+
 def event_already_sent(match_id: int, event_id: str) -> bool:
     with get_conn() as conn:
         row = conn.execute(

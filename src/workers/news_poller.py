@@ -17,7 +17,7 @@ from ..sources.rss import fetch_all
 
 log = logging.getLogger(__name__)
 
-POLL_SECONDS = 15 * 60
+POLL_SECONDS = 5 * 60
 FRESHNESS_WINDOW = timedelta(hours=24)
 
 
@@ -41,13 +41,14 @@ async def run(
     log.info("news_poller started")
     zero_streak: dict[str, int] = {}
     dead_alerted: set[str] = set()
-    # On a host with an ephemeral filesystem (free Render), the SQLite dedup
-    # state is wiped on every restart/redeploy. Without priming, the first poll
-    # after a restart re-announces every article published in the last 24h that
-    # was already sent before the restart. So on the FIRST iteration we seed the
-    # current feed contents silently and send nothing; only articles that appear
-    # in later iterations (i.e. after startup) are pushed.
-    first_run = True
+    # Silent priming avoids a flood of old articles when the DB starts EMPTY
+    # (first-ever run, or an ephemeral-disk wipe). With durable state already
+    # populated (Turso), we must NOT prime — otherwise every restart would
+    # silently seed genuinely-new articles instead of sending them. So prime
+    # only when there are no articles yet; otherwise send new ones normally.
+    first_run = not db.has_articles()
+    if first_run:
+        log.info("news_poller: empty DB — first poll will prime silently")
     while not (stop_event and stop_event.is_set()):
         try:
             items = await fetch_all(FEEDS)
