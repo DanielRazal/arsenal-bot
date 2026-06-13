@@ -5,10 +5,10 @@ FEEDS = [
     {"source": "BBC Sport — Arsenal", "url": "https://feeds.bbci.co.uk/sport/football/teams/arsenal/rss.xml", "arsenal_only": True},
     {"source": "The Guardian — Arsenal", "url": "https://www.theguardian.com/football/arsenal/rss", "arsenal_only": True},
     # Israeli general-sport feed: no Arsenal-only feed exists in Hebrew media, so
-    # this is a broad feed filtered to Arsenal. title_match_only requires the
-    # keyword in the TITLE (not the summary) — Hebrew sport feeds mention "ארסנל"
-    # in passing about ex-Arsenal players, which the title check filters out.
-    {"source": "Ynet ספורט", "url": "https://www.ynet.co.il/Integration/StoryRss3.xml", "arsenal_only": False, "title_match_only": True},
+    # this is a broad feed filtered to Arsenal by keyword anywhere in the article
+    # (title or body) — chosen for wider Hebrew coverage, at the cost of the
+    # occasional passing mention (e.g. an ex-Arsenal player in other news).
+    {"source": "Ynet ספורט", "url": "https://www.ynet.co.il/Integration/StoryRss3.xml", "arsenal_only": False},
 ]
 
 ARSENAL_KEYWORDS = [
