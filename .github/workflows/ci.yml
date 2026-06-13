@@ -1,0 +1,46 @@
+name: CI
+
+# Runs the test suite on every push/PR. This is the one ACTIVE workflow
+# (the per-job cron workflows are *.yml.disabled — the bot runs on Render).
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Run tests
+        run: pytest -q
+        env:
+          FOOTBALL_DATA_API_KEY: test
+          TELEGRAM_BOT_TOKEN: test
+          TELEGRAM_CHAT_ID: test
+          DISCORD_WEBHOOK_URL: test
+          GROQ_API_KEY: test
+
+      # Deploy gate: only runs if tests passed, on main. Triggers Render only
+      # when RENDER_DEPLOY_HOOK_URL is set as a repo secret. To make this a real
+      # gate: in Render → service → Settings, turn OFF "Auto-Deploy", then add
+      # the service's Deploy Hook URL as the GitHub secret RENDER_DEPLOY_HOOK_URL.
+      # Until then Render keeps auto-deploying and this step is a harmless no-op.
+      - name: Deploy to Render (only on green main)
+        if: success() && github.ref == 'refs/heads/main'
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -n "$HOOK" ]; then
+            echo "Tests passed — triggering Render deploy."
+            curl -fsS -X POST "$HOOK"
+          else
+            echo "RENDER_DEPLOY_HOOK_URL not set — skipping (Render auto-deploy still active)."
+          fi
