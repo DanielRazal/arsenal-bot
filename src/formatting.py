@@ -124,6 +124,9 @@ def format_standings(rows: list[dict]) -> str:
     arsenal_row = next((r for r in rows if r.get("team_id") == ARSENAL_TEAM_ID), None)
     played = rows[0].get("played", 0) if rows else 0
 
+    # RLM forces each line to right-to-left base direction (right-aligned in
+    # Telegram); LRM keeps the signed goal-difference reading "+44" not "44+".
+    rlm, lrm = "‏", "‎"
     lines = [f"🏆 *פרמייר ליג · מחזור {played}*", ""]
     for row in rows:
         rank = row.get("position", 0)
@@ -131,28 +134,28 @@ def format_standings(rows: list[dict]) -> str:
         points = row.get("points", 0)
         gd = row.get("goal_difference", 0)
         gd_str = f"+{gd}" if (gd or 0) > 0 else str(gd)
+        gd_disp = f"({lrm}{gd_str}{lrm})"
         is_arsenal = row.get("team_id") == ARSENAL_TEAM_ID
         if is_arsenal:
-            lines.append(f"⭐ *{rank}. {name}* — *{points} נק'* ({gd_str})")
+            lines.append(f"⭐ *{rank}. {name}* — *{points} נק'* {gd_disp}")
         else:
-            lines.append(f"   {rank}. {name} — {points} נק' ({gd_str})")
+            lines.append(f"{rank}. {name} — {points} נק' {gd_disp}")
         if rank == 4 or rank == 17:
-            lines.append("   ━━━━━━━━━━━━━━━━━━")
+            lines.append("━━━━━━━━━━━━━━━━━━")
 
     lines.append("")
-    if arsenal_row is None:
-        return "\n".join(lines)
-    arsenal_pos = arsenal_row.get("position", 0)
-    if arsenal_pos == 1:
-        lines.append("🥇 _מובילים בליגה!_")
-    else:
-        leader = rows[0]
-        gap = (leader.get("points") or 0) - (arsenal_row.get("points") or 0)
-        if gap == 0:
-            lines.append(f"_שווים בנקודות עם {hebrewize_team(leader.get('team_name') or '')}_ 🤝")
+    if arsenal_row is not None:
+        if arsenal_row.get("position", 0) == 1:
+            lines.append("🥇 _מובילים בליגה!_")
         else:
-            lines.append(f"_פער של {gap} נקודות מ-{hebrewize_team(leader.get('team_name') or '')}_")
-    return "\n".join(lines)
+            leader = rows[0]
+            gap = (leader.get("points") or 0) - (arsenal_row.get("points") or 0)
+            leader_name = hebrewize_team(leader.get("team_name") or "")
+            if gap == 0:
+                lines.append(f"_שווים בנקודות עם {leader_name}_ 🤝")
+            else:
+                lines.append(f"_פער של {gap} נקודות מ-{leader_name}_")
+    return "\n".join((rlm + ln) if ln else ln for ln in lines)
 
 
 def format_spurs_loss(match: dict) -> str:

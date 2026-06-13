@@ -139,7 +139,7 @@ TEAMS_EN_HE: dict[str, str] = {
     "aston villa": "אסטון וילה",
     "bournemouth": "בורנמות'",
     "brentford": "ברנטפורד",
-    "brighton hove albion": "ברייטון", "brighton": "ברייטון",
+    "brighton hove albion": "ברייטון", "brighton hove": "ברייטון", "brighton": "ברייטון",
     "burnley": "ברנלי",
     "chelsea": "צ'לסי",
     "crystal palace": "קריסטל פאלאס",
