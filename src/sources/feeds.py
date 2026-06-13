@@ -11,7 +11,8 @@ FEEDS = [
     # Hebrew sources (sent as-is)
     {"source": "Ynet ספורט", "url": "https://www.ynet.co.il/Integration/StoryRss3.xml", "arsenal_only": False, "lang": "he"},
     {"source": "Walla כדורגל עולמי", "url": "https://rss.walla.co.il/feed/316", "arsenal_only": False, "lang": "he"},
-    {"source": "Maariv ספורט", "url": "https://www.maariv.co.il/Rss/RssFeedsSport", "arsenal_only": False, "lang": "he"},
+    # Maariv removed: its server blocks Render's datacenter IP (returns 0 / errors
+    # every poll), so it's dead weight on this host.
     # Arsenal-dedicated English sources (auto-translated to Hebrew)
     {"source": "Arseblog", "url": "https://arseblog.com/feed/", "arsenal_only": True, "lang": "en"},
     {"source": "BBC — ארסנל", "url": "https://feeds.bbci.co.uk/sport/football/teams/arsenal/rss.xml", "arsenal_only": True, "lang": "en"},
