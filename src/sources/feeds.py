@@ -1,14 +1,14 @@
+# Hebrew/Israeli sources only — English sources were removed by request.
+# All are broad sport/football feeds (no Arsenal-only Hebrew feed exists), so
+# they are filtered to Arsenal by keyword anywhere in the article (title or
+# body). Cross-source duplicates are handled by dedup.py (now Hebrew-aware).
+# NOTE: this is news only. Live match alerts (goals, scores, pre-match,
+# half-time, post-match summary) come from the football-data API and are
+# unaffected by this list.
 FEEDS = [
-    {"source": "Arseblog", "url": "https://arseblog.com/feed/", "arsenal_only": True},
-    {"source": "Reddit r/Gunners", "url": "https://www.reddit.com/r/Gunners/.rss", "arsenal_only": True},
-    {"source": "Sky Sports — Premier League", "url": "https://www.skysports.com/rss/12040", "arsenal_only": False},
-    {"source": "BBC Sport — Arsenal", "url": "https://feeds.bbci.co.uk/sport/football/teams/arsenal/rss.xml", "arsenal_only": True},
-    {"source": "The Guardian — Arsenal", "url": "https://www.theguardian.com/football/arsenal/rss", "arsenal_only": True},
-    # Israeli general-sport feed: no Arsenal-only feed exists in Hebrew media, so
-    # this is a broad feed filtered to Arsenal by keyword anywhere in the article
-    # (title or body) — chosen for wider Hebrew coverage, at the cost of the
-    # occasional passing mention (e.g. an ex-Arsenal player in other news).
     {"source": "Ynet ספורט", "url": "https://www.ynet.co.il/Integration/StoryRss3.xml", "arsenal_only": False},
+    {"source": "Walla כדורגל עולמי", "url": "https://rss.walla.co.il/feed/316", "arsenal_only": False},
+    {"source": "Maariv ספורט", "url": "https://www.maariv.co.il/Rss/RssFeedsSport", "arsenal_only": False},
 ]
 
 ARSENAL_KEYWORDS = [

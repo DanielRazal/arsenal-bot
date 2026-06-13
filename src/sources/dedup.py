@@ -26,10 +26,17 @@ STOPWORDS = frozenset(
         "you", "your", "my", "mine", "yours",
         # Common sports/news connectors that appear in nearly every title
         "vs", "v", "report", "news", "preview", "match", "matchday",
+        # Hebrew connectors / news-noise that carry no story identity
+        "דיווח", "חדשות", "עדכון", "כתבה", "היום", "אתמול", "אחרי",
+        "לפני", "הבוקר", "הערב", "אמש", "וידאו", "תיעוד", "צפו", "האם",
+        "מול", "נגד", "עוד", "כבר", "הוא", "היא", "הם", "גם",
     }
 )
 
-_WORD_RE = re.compile(r"[A-Za-z0-9']+")
+# Include the Hebrew block (U+0590–U+05FF) so Hebrew titles tokenize too —
+# without this, Hebrew headlines produced empty token sets and cross-source
+# dedup never fired for Hebrew articles.
+_WORD_RE = re.compile(r"[A-Za-z0-9֐-׿']+")
 
 
 def _tokens(title: str) -> set[str]:
