@@ -19,6 +19,7 @@ from .config import (
 from .sources.espn import fetch_arsenal_squad
 from .llm.client import LLMClient
 from .llm.match_summary import summarize_match
+from .llm.translate import translate_title
 from .notifiers.fanout import Fanout
 from .sources.football_data import FootballDataClient
 from .workers import match_watcher, morning_digest, news_poller, spurs_watcher, standings_alert, weekly_recap
@@ -125,6 +126,11 @@ async def main() -> None:
         await fanout.send(formatting.format_match_finished(match, summary_text))
 
     async def on_new_article(article: dict) -> None:
+        # English-source articles are translated to Hebrew before sending so the
+        # feed stays Hebrew. Failures fall back to the original inside translate_title.
+        if article.get("lang") == "en":
+            he_title = await translate_title(llm, article.get("title", ""))
+            article = {**article, "title": he_title}
         await fanout.send(formatting.format_news_item(article))
 
     async def on_digest(text: str, count: int) -> None:

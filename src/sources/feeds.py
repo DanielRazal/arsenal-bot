@@ -1,15 +1,21 @@
-# Hebrew/Israeli sources only — English sources removed by request. All are
-# broad sport/football feeds filtered to Arsenal by keyword anywhere in the
-# article (title or body). Cross-source duplicates are handled by dedup.py
-# (Hebrew-aware). (Fabrizio Romano via CaughtOffside was tried and removed —
-# its feed served stale, ~year-old articles, i.e. it isn't actively updated.)
+# Each feed has a "lang": "he" feeds are sent as-is; "en" feeds are machine-
+# translated to Hebrew (see src/llm/translate.py) before sending, so the output
+# is always Hebrew. Hebrew sources are broad sport feeds filtered to Arsenal by
+# keyword; English sources are Arsenal-dedicated (high volume) — they exist to
+# fix the thin Arsenal coverage of Israeli media. Cross-source duplicates are
+# handled by dedup.py.
 # NOTE: this is news only. Live match alerts (goals, scores, pre-match,
 # half-time, post-match summary) come from the football-data API and are
 # unaffected by this list.
 FEEDS = [
-    {"source": "Ynet ספורט", "url": "https://www.ynet.co.il/Integration/StoryRss3.xml", "arsenal_only": False},
-    {"source": "Walla כדורגל עולמי", "url": "https://rss.walla.co.il/feed/316", "arsenal_only": False},
-    {"source": "Maariv ספורט", "url": "https://www.maariv.co.il/Rss/RssFeedsSport", "arsenal_only": False},
+    # Hebrew sources (sent as-is)
+    {"source": "Ynet ספורט", "url": "https://www.ynet.co.il/Integration/StoryRss3.xml", "arsenal_only": False, "lang": "he"},
+    {"source": "Walla כדורגל עולמי", "url": "https://rss.walla.co.il/feed/316", "arsenal_only": False, "lang": "he"},
+    {"source": "Maariv ספורט", "url": "https://www.maariv.co.il/Rss/RssFeedsSport", "arsenal_only": False, "lang": "he"},
+    # Arsenal-dedicated English sources (auto-translated to Hebrew)
+    {"source": "Arseblog", "url": "https://arseblog.com/feed/", "arsenal_only": True, "lang": "en"},
+    {"source": "BBC — ארסנל", "url": "https://feeds.bbci.co.uk/sport/football/teams/arsenal/rss.xml", "arsenal_only": True, "lang": "en"},
+    {"source": "Guardian — ארסנל", "url": "https://www.theguardian.com/football/arsenal/rss", "arsenal_only": True, "lang": "en"},
 ]
 
 ARSENAL_KEYWORDS = [

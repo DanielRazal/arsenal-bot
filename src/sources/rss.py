@@ -65,5 +65,6 @@ async def fetch_all(feeds: Iterable[dict]) -> list[dict]:
                 "source": feed_meta["source"],
                 "arsenal_only": feed_meta["arsenal_only"],
                 "title_match_only": feed_meta.get("title_match_only", False),
+                "lang": feed_meta.get("lang", "he"),
             })
     return out
