@@ -12,6 +12,21 @@ log = logging.getLogger(__name__)
 
 CommandReplyFn = Callable[[str], Awaitable[str]]
 
+_RLM = "‏"  # Right-to-Left Mark
+
+
+def _rtl(text: str) -> str:
+    """Right-align every line in Telegram by forcing RTL base direction.
+
+    Lines that start with a digit, "(", or Latin letter otherwise left-align;
+    prefixing an (invisible) RLM makes the whole line read right-to-left. Blank
+    lines are left untouched. Applied centrally so it also covers LLM-generated
+    summaries, not just the formatting templates.
+    """
+    if not text:
+        return text
+    return "\n".join((_RLM + line) if line.strip() else line for line in text.split("\n"))
+
 
 class TelegramNotifier:
     def __init__(self) -> None:
@@ -36,7 +51,7 @@ class TelegramNotifier:
         try:
             await self._bot.send_message(
                 chat_id=self._chat_id,
-                text=text,
+                text=_rtl(text),
                 parse_mode=ParseMode.MARKDOWN,
                 disable_web_page_preview=False,
             )
@@ -46,7 +61,7 @@ class TelegramNotifier:
     async def send_admin(self, text: str) -> None:
         """Send an ops/health alert to the admin chat (not the public channel)."""
         try:
-            await self._bot.send_message(chat_id=ADMIN_CHAT_ID, text=text)
+            await self._bot.send_message(chat_id=ADMIN_CHAT_ID, text=_rtl(text))
         except TelegramError:
             log.exception("Telegram admin alert failed")
 
@@ -87,7 +102,7 @@ class TelegramNotifier:
                 reply = "שגיאה פנימית, נסה שוב מאוחר יותר."
             if update.effective_message:
                 await update.effective_message.reply_text(
-                    reply, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True
+                    _rtl(reply), parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True
                 )
         return _wrapped
 
@@ -118,7 +133,7 @@ class TelegramNotifier:
             reply = "שגיאה פנימית, נסה שוב מאוחר יותר."
         try:
             await post.reply_text(
-                reply, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True
+                _rtl(reply), parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True
             )
         except TelegramError:
             log.exception("Failed to reply to channel command")

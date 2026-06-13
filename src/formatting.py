@@ -124,9 +124,9 @@ def format_standings(rows: list[dict]) -> str:
     arsenal_row = next((r for r in rows if r.get("team_id") == ARSENAL_TEAM_ID), None)
     played = rows[0].get("played", 0) if rows else 0
 
-    # RLM forces each line to right-to-left base direction (right-aligned in
-    # Telegram); LRM keeps the signed goal-difference reading "+44" not "44+".
-    rlm, lrm = "‏", "‎"
+    # LRM keeps the signed goal-difference reading "+44" not "44+". Per-line
+    # RTL alignment is applied centrally in the Telegram notifier.
+    lrm = "‎"
     lines = [f"🏆 *פרמייר ליג · מחזור {played}*", ""]
     for row in rows:
         rank = row.get("position", 0)
@@ -137,7 +137,7 @@ def format_standings(rows: list[dict]) -> str:
         gd_disp = f"({lrm}{gd_str}{lrm})"
         is_arsenal = row.get("team_id") == ARSENAL_TEAM_ID
         if is_arsenal:
-            lines.append(f"⭐ *{rank}. {name}* — *{points} נק'* {gd_disp}")
+            lines.append(f"{rank}. *{name} — {points} נק'* {gd_disp}")
         else:
             lines.append(f"{rank}. {name} — {points} נק' {gd_disp}")
         if rank == 4 or rank == 17:
@@ -155,7 +155,7 @@ def format_standings(rows: list[dict]) -> str:
                 lines.append(f"_שווים בנקודות עם {leader_name}_ 🤝")
             else:
                 lines.append(f"_פער של {gap} נקודות מ-{leader_name}_")
-    return "\n".join((rlm + ln) if ln else ln for ln in lines)
+    return "\n".join(lines)
 
 
 def format_spurs_loss(match: dict) -> str:
