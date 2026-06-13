@@ -1,11 +1,13 @@
 import asyncio
 import logging
+import re
 import signal
 import sys
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from . import db, formatting
+from .hebrew_names import hebrewize
 from .health import start_health_server
 from .config import (
     ARSENAL_TEAM_ID,
@@ -19,7 +21,7 @@ from .config import (
 from .sources.espn import fetch_arsenal_squad
 from .llm.client import LLMClient
 from .llm.match_summary import summarize_match
-from .llm.translate import translate_title
+from .llm.translate import translate_title, transliterate_names
 from .notifiers.fanout import Fanout
 from .sources.football_data import FootballDataClient
 from .workers import match_watcher, morning_digest, news_poller, spurs_watcher, standings_alert, weekly_recap
@@ -85,6 +87,16 @@ async def main() -> None:
     async def cmd_squad(_args: str) -> str:
         try:
             players = await fetch_arsenal_squad()
+            # Localize names: curated Hebrew map first; transliterate whatever is
+            # left (youth / new signings) via one LLM call so it isn't half English.
+            pending = [p for p in players if re.search(r"[A-Za-z]", hebrewize(p.get("name", "")))]
+            for p in players:
+                if p not in pending:
+                    p["name"] = hebrewize(p.get("name", ""))
+            if pending:
+                mapping = await transliterate_names(llm, [p.get("name", "") for p in pending])
+                for p in pending:
+                    p["name"] = mapping.get(p.get("name", ""), p.get("name", ""))
             return formatting.format_squad(players)
         except Exception:
             log.exception("/squad command failed")
