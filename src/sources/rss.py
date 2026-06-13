@@ -55,10 +55,13 @@ async def fetch_all(feeds: Iterable[dict]) -> list[dict]:
     tasks = [fetch_feed(f["url"]) for f in feeds]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     out = []
+    counts = []
     for feed_meta, items in zip(feeds, results):
         if isinstance(items, Exception):
             log.warning("Feed %s errored: %s", feed_meta["source"], items)
+            counts.append(f"{feed_meta['source']}=ERR")
             continue
+        counts.append(f"{feed_meta['source']}={len(items)}")
         for item in items:
             out.append({
                 **item,
@@ -67,4 +70,5 @@ async def fetch_all(feeds: Iterable[dict]) -> list[dict]:
                 "title_match_only": feed_meta.get("title_match_only", False),
                 "lang": feed_meta.get("lang", "he"),
             })
+    log.info("fetch_all per-feed item counts: %s", " · ".join(counts))
     return out
