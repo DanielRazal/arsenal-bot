@@ -10,18 +10,20 @@ def _local_time(utc_iso: str) -> str:
     return dt.astimezone(ZoneInfo(TIMEZONE)).strftime("%H:%M %d/%m")
 
 
-def format_prematch(match: dict) -> str:
+def format_prematch(match: dict, preview: str = "") -> str:
     kickoff = _local_time(match["utc_date"])
     competition = hebrewize_competition(match.get("competition") or "משחק")
     home = hebrewize_team(match["home_team"])
     away = hebrewize_team(match["away_team"])
-    return (
+    card = (
         f"⚽ *משחק בעוד 30 דקות!*\n"
         f"🏆 {competition}\n"
         f"🆚 {home} נגד {away}\n"
         f"🕒 {kickoff}\n"
-        f"בוא נראה אותם 💪"
     )
+    if preview.strip():
+        return f"{card}\n{preview.strip()}"
+    return f"{card}בוא נראה אותם 💪"
 
 
 def format_goal(event: dict) -> str:

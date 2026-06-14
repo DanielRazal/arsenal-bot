@@ -21,6 +21,7 @@ from .config import (
 from .sources.espn import fetch_arsenal_squad
 from .llm.client import LLMClient
 from .llm.match_summary import summarize_match
+from .llm.match_preview import make_preview
 from .llm.translate import translate_title, transliterate_names
 from .notifiers.fanout import Fanout
 from .sources.football_data import FootballDataClient
@@ -159,7 +160,14 @@ async def main() -> None:
             await fanout.send(formatting.format_red_card(event))
 
     async def on_prematch(match: dict) -> None:
-        await fanout.send(formatting.format_prematch(match))
+        preview = ""
+        try:
+            finished = await fd_client.get_team_matches(status="FINISHED")
+            finished.sort(key=lambda m: m["utc_date"], reverse=True)
+            preview = await make_preview(llm, match, finished[:5])
+        except Exception:
+            log.exception("AI preview failed; sending plain pre-match alert")
+        await fanout.send(formatting.format_prematch(match, preview))
 
     async def on_halftime(match: dict) -> None:
         await fanout.send(formatting.format_halftime(match))
