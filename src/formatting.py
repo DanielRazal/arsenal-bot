@@ -175,8 +175,11 @@ def format_help() -> str:
     return (
         "🔴⚪ *פקודות הבוט של ארסנל*\n\n"
         "/next — המשחקים הקרובים של ארסנל\n"
+        "/fixtures — לוח המשחקים המלא\n"
         "/last — סיכום המשחק האחרון עם ניתוח AI\n"
+        "/form — 5 התוצאות האחרונות\n"
         "/standings — טבלת הפרמיירליג\n"
+        "/scorers — מובילי הבקיעים בליגה\n"
         "/squad — הרכב הקבוצה הנוכחי\n"
         "/stats — מבקיעי ארסנל בליגה\n"
         "/help — התפריט הזה\n\n"
@@ -250,6 +253,38 @@ def format_stats(scorers: list[dict]) -> str:
         penalties = s.get("penalties", 0)
         pen_str = f" _(כולל {penalties} פנדל)_" if penalties else ""
         lines.append(f"{i}. {name} — {goals} ⚽{pen_str}")
+    return "\n".join(lines)
+
+
+def format_scorers(scorers: list[dict]) -> str:
+    if not scorers:
+        return "לא הצלחתי לשלוף את מובילי הבקיעים כרגע."
+    lines = ["⚽ *מובילי הבקיעים בפרמייר ליג*", ""]
+    for i, s in enumerate(scorers[:10], 1):
+        name = hebrewize(s.get("player_name", ""))
+        team = hebrewize_team(s.get("team_name", ""))
+        goals = s.get("goals", 0) or 0
+        lines.append(f"{i}. {name} ({team}) — {goals} ⚽")
+    return "\n".join(lines)
+
+
+def format_form(matches: list[dict]) -> str:
+    if not matches:
+        return "לא מצאתי משחקים אחרונים."
+    lines = ["📋 *5 המשחקים האחרונים של ארסנל*", ""]
+    for m in matches[:5]:
+        arsenal_home = m.get("home_team_id") == ARSENAL_TEAM_ID
+        ars = (m.get("score_home") if arsenal_home else m.get("score_away")) or 0
+        opp = (m.get("score_away") if arsenal_home else m.get("score_home")) or 0
+        opp_name = hebrewize_team(m.get("away_team") if arsenal_home else m.get("home_team"))
+        if ars > opp:
+            res = "✅ ניצחון"
+        elif ars == opp:
+            res = "🤝 תיקו"
+        else:
+            res = "❌ הפסד"
+        venue = "🏠" if arsenal_home else "✈️"
+        lines.append(f"{res} {ars}-{opp} {venue} נגד {opp_name}")
     return "\n".join(lines)
 
 

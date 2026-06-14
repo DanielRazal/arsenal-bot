@@ -121,13 +121,21 @@ def hebrewize(text: str) -> str:
 # and punctuation, then look up. Unknown teams fall back to the original
 # (English) — the opponent long tail can't all be covered.
 import re as _re
+import unicodedata as _ud
 
-_CLUB_TOKENS = {"fc", "afc", "cf", "sc", "ac", "as", "ssc", "ud", "cd", "club", "de"}
-_TEAM_TOKEN_RE = _re.compile(r"[a-zà-ÿ']+")
+_CLUB_TOKENS = {"fc", "afc", "cf", "sc", "ac", "as", "ssc", "ud", "cd", "club", "clube", "cp", "de"}
+_TEAM_TOKEN_RE = _re.compile(r"[a-z']+")
+
+
+def _strip_accents(s: str) -> str:
+    return "".join(c for c in _ud.normalize("NFKD", s) if not _ud.combining(c))
 
 
 def _norm_team(name: str) -> str:
-    toks = [t for t in _TEAM_TOKEN_RE.findall(name.lower()) if t not in _CLUB_TOKENS]
+    # Strip diacritics ("Atlético" -> "atletico") then drop club-type tokens, so
+    # both full match names and shortNames map to the same key.
+    s = _strip_accents(name.lower())
+    toks = [t for t in _TEAM_TOKEN_RE.findall(s) if t not in _CLUB_TOKENS]
     return " ".join(toks)
 
 
@@ -173,7 +181,7 @@ TEAMS_EN_HE: dict[str, str] = {
     "benfica": "בנפיקה",
     "ajax": "אייאקס",
     "bayer leverkusen": "באייר לברקוזן", "leverkusen": "לברקוזן",
-    "sporting cp": "ספורטינג ליסבון", "sporting": "ספורטינג ליסבון",
+    "sporting portugal": "ספורטינג ליסבון", "sporting": "ספורטינג ליסבון",
 }
 
 COMPETITIONS_EN_HE: dict[str, str] = {

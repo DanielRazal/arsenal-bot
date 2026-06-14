@@ -111,12 +111,43 @@ async def main() -> None:
             log.exception("/stats command failed")
             return "לא הצלחתי לשלוף את הסטטיסטיקות כרגע."
 
+    async def cmd_scorers(_args: str) -> str:
+        try:
+            scorers = await fd_client.get_scorers()
+            return formatting.format_scorers(scorers)
+        except Exception:
+            log.exception("/scorers command failed")
+            return "לא הצלחתי לשלוף את מובילי הבקיעים כרגע."
+
+    async def cmd_form(_args: str) -> str:
+        try:
+            finished = await fd_client.get_team_matches(status="FINISHED")
+            finished.sort(key=lambda m: m["utc_date"], reverse=True)
+            return formatting.format_form(finished[:5])
+        except Exception:
+            log.exception("/form command failed")
+            return "לא הצלחתי לשלוף את הכושר האחרון כרגע."
+
+    async def cmd_fixtures(_args: str) -> str:
+        try:
+            matches = await fd_client.get_team_matches(status="SCHEDULED")
+            if not matches:
+                matches = await fd_client.get_team_matches(status="TIMED")
+            matches.sort(key=lambda m: m["utc_date"])
+            return formatting.format_next_matches(matches[:7])
+        except Exception:
+            log.exception("/fixtures command failed")
+            return "לא הצלחתי לשלוף את לוח המשחקים כרגע."
+
     async def cmd_help(_args: str) -> str:
         return formatting.format_help()
 
     fanout.register_telegram_command("next", cmd_next)
+    fanout.register_telegram_command("fixtures", cmd_fixtures)
     fanout.register_telegram_command("standings", cmd_standings)
     fanout.register_telegram_command("last", cmd_last)
+    fanout.register_telegram_command("form", cmd_form)
+    fanout.register_telegram_command("scorers", cmd_scorers)
     fanout.register_telegram_command("squad", cmd_squad)
     fanout.register_telegram_command("stats", cmd_stats)
     fanout.register_telegram_command("help", cmd_help)
