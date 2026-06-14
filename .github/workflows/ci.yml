@@ -28,26 +28,7 @@ jobs:
           DISCORD_WEBHOOK_URL: test
           GROQ_API_KEY: test
 
-      # Deploy gate: only runs if tests passed, on main. Triggers Render only
-      # when RENDER_DEPLOY_HOOK_URL is set as a repo secret. To make this a real
-      # gate: in Render → service → Settings, turn OFF "Auto-Deploy", then add
-      # the service's Deploy Hook URL as the GitHub secret RENDER_DEPLOY_HOOK_URL.
-      # Until then Render keeps auto-deploying and this step is a harmless no-op.
-      - name: Deploy to Render (only on green main)
-        if: success() && github.ref == 'refs/heads/main'
-        env:
-          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-        run: |
-          if [ -n "$HOOK" ]; then
-            echo "Tests passed — triggering Render deploy."
-            curl -fsS -X POST "$HOOK"
-          else
-            echo "RENDER_DEPLOY_HOOK_URL not set — skipping (Render auto-deploy still active)."
-          fi
-
-  # Security scans on every push/PR. Runs in parallel with tests. A red result
-  # is a visibility signal (Render auto-deploy isn't gated on it unless you add
-  # `needs: [test, security]` to the deploy step + enable the deploy hook).
+  # Security scans on every push/PR, in parallel with tests.
   security:
     runs-on: ubuntu-latest
     steps:
@@ -62,3 +43,7 @@ jobs:
         run: pip-audit -r requirements.txt
       - name: Static security scan (bandit)
         run: bandit -r src scripts -ll
+
+# Deploy gating is handled natively by Render: the service's Auto-Deploy is set
+# to "After CI Checks Pass", so Render deploys a commit only once these test +
+# security jobs report green. No deploy hook needed here.
