@@ -74,6 +74,7 @@ async def _handle_live_match(match: dict, on_event) -> None:
             "scorer": scorer_name,
             "team": team_name,
             "is_arsenal": is_arsenal,
+            "goal_type": goal.get("type"),  # REGULAR / PENALTY / OWN / ... (may be None)
         })
         db.mark_event_sent(match["id"], event_id)
 

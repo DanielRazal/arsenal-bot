@@ -32,13 +32,15 @@ def format_goal(event: dict) -> str:
     scorer = hebrewize(event.get("scorer", "Unknown"))
     team = hebrewize_team(event.get("team", ""))
     is_arsenal = event.get("is_arsenal", False)
+    gtype = (event.get("goal_type") or "").upper()
+    kind = " ⚪ _(פנדל)_" if gtype == "PENALTY" else (" 🙃 _(שער עצמי)_" if gtype == "OWN" else "")
     score = f"{match.get('score_home') or 0}–{match.get('score_away') or 0}"
     home = hebrewize_team(match["home_team"])
     away = hebrewize_team(match["away_team"])
     emoji = "🔴⚪ *גוווולllll!!!*" if is_arsenal else "😡 שער ליריבים"
     return (
         f"{emoji}\n"
-        f"⏱ דקה {minute}' — {scorer} ({team})\n"
+        f"⏱ דקה {minute}' — {scorer} ({team}){kind}\n"
         f"📊 {home} {score} {away}"
     )
 
